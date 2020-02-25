@@ -7,6 +7,8 @@ state = {}
 updatefn = nil
 drawfn = nil
 
+text_speed = 0.35
+
 function _init()
   --state = init_intro()
   state = init_talking()
@@ -38,13 +40,11 @@ function init_talking()
     dialogue_state = 0,
     dialogue_t = 0,
     dialogue = {},
+    state_init = true,
   }
 
   updatefn = update_talking
   drawfn = draw_talking
-
-  s.dialogue = {}
-  add(s.dialogue, "light the candle darling")
 
   return s
 end
@@ -55,24 +55,26 @@ function update_talking(state)
   state.dialogue_t += 1
 
   if state.s == 0 then
+    if state.state_init then
+      state.dialogue = {}
+      add(state.dialogue, "light the candle darling")
+    end
     state.filter_scene = true
     state.filter_pat = 0b0000000000000000.1
     state.face_t = 0
-    if state.t > 80 and btnp(4) then
-      state.s = 1
-      state.t = 0
-      state.dialogue_t = 0
-      state.dialogue_state = 0
+
+  elseif state.s == 1 then
+    if state.state_init then
       state.dialogue = {}
       add(state.dialogue, "ahh i can feel the spirits")
-      add(state.dialogue, "blah blah blah")
-      add(state.dialogue, "alah blah blah")
-      add(state.dialogue, "clah blah blah")
-      --state.text = ""
+      add(state.dialogue, "intern pete, fetch the incense")
     end
-  elseif state.s == 1 then
+  end
+
+  state.state_init = false
+
+  if (state.s > 0) then
     state.filter_scene = true
-    --state.filter_pat = 0b0101101001011010.1 + state.t*128
     local y = 0
     if (state.t % 32) < 16 then
       y = 0b1110110111101111.1
@@ -92,17 +94,24 @@ function update_talking(state)
   end
 
   if (state.dialogue_state < #state.dialogue) then
-    --state.text = "AOIWFJOIWA" -- 
     state.text = state.dialogue[state.dialogue_state+1]
-    local k = 4
-    --if state.dialogue_t < k*state.dialogue[state.dialogue_state] then
-      --state.dialogue_t = 1000
-    --end
-  end
+    if btnp(4) then
+      if state.dialogue_t * text_speed < #state.text then
+        state.dialogue_t = 1000
+      else
+        state.dialogue_state += 1
+        state.dialogue_t = 0
 
-  --if (filter_scene) then
-    --filter_b = ((state.t / 16) % 2) < 1
-  --end
+        if state.dialogue_state >= #state.dialogue then
+          state.dialogue_state = 0
+          state.s += 1
+          state.state_init = true
+          state.t = 0
+          state.face_t = 0
+        end
+      end
+    end
+  end
 end
 
 function draw_talking(state)
@@ -195,12 +204,16 @@ function draw_talking(state)
   local face_y = 35 - scale*16
   rspr_basic(0,32,face_x,face_y,24,32,scale,a, mod, 11)
 
-  if state.s > 0 and state.t % 32 < 16 then
-    rspr_basic(24,32,face_x + 1, face_y, 16,32, scale, a, mod, 11)
+  local mouth_move_mult = 0.66
+  local mouth_move_rate = 28
+  if state.text != nil and state.dialogue_t * text_speed * mouth_move_mult < #state.text then
+    if state.s > 0 and state.t % mouth_move_rate < mouth_move_rate/2 then
+      rspr_basic(24,32,face_x + 1, face_y, 16,32, scale, a, mod, 11)
+    end
   end
 
   if state.text != nil then
-    draw_text(state.t * 0.35, state.text, 4, 6, 7)
+    draw_text(state.dialogue_t * text_speed, state.text, 4, 6, 7)
   end
 
   palt()
