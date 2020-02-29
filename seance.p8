@@ -9,6 +9,7 @@ dialogue_y = 6
 action_pressed_last_frame = false
 
 function _init()
+  cls(0)
   --global_state = init_intro()
   global_state = init_talking()
 end
@@ -46,9 +47,13 @@ function init_talking()
     noise_mag = 0,
 
     text = "",
-    face_t = 0,
     face_sprite_x = 0,
     face_sprite_y = 32,
+    face_scale = 1,
+    face_angle = -0.25,
+    face_mod = 1,
+    face_mod_d = 0,
+    draw_face = false,
     dialogue_state = 0,
     dialogue_t = 0,
     dialogue = {},
@@ -63,7 +68,6 @@ end
 
 function update_talking(state)
   state.t += 1
-  state.face_t += 1
   state.dialogue_t += 1
   state.global_t += 1
 
@@ -81,10 +85,10 @@ function update_talking(state)
       add(state.dialogue, "class this is serious please")
       add(state.dialogue, "        stop               ")
       add(state.dialogue, "light the candles darling")
+      state.draw_face = true
     end
     state.filter_scene = true
     state.filter_pat = 0b0000000000000000.1
-    state.face_t = 0
     local speed = sqr((1 + state.dialogue_state) * 0.15)
     local is_end = (state.dialogue_state == #state.dialogue - 2 and abs(state.phase_text_y - dialogue_y) < 1)
       or state.dialogue_state == #state.dialogue - 1
@@ -96,9 +100,12 @@ function update_talking(state)
     if is_end then
       state.phase_col = 0
       state.phase_bg_bits = 0
+      state.face_scale = lerp(state.face_scale, 1.2 + 0.12*sin(state.global_t / 250), 40)
+      state.face_mod = 0
     else
+      state.face_scale = 0
       state.phase_col += 0.4 * speed
-      state.phase_bg_bits += 0.01 * speed
+      state.phase_bg_bits += 0.3 * speed
     end
   elseif state.s == 1 then
     if state.state_init then
@@ -133,6 +140,14 @@ function update_talking(state)
     else
       state.noise_mag = 0
     end
+
+    state.face_angle = -0.25 + 0.05 * cos(state.t / 300)
+
+    -- how much to sample angle in rendering
+    state.face_mod = min(1, sqr(state.t/ 60))
+    -- how much to offset distance in rendering
+    state.face_mod_d = sin(state.global_t / 1000) * 4 / (0.1 * state.t + 1)
+    state.face_scale = 1.2 + 0.12*sin(state.global_t / 250)
   end
 
   if (state.dialogue_state < #state.dialogue) then
@@ -149,7 +164,6 @@ function update_talking(state)
           state.s += 1
           state.state_init = true
           state.t = 0
-          state.face_t = 0
         end
       end
     end
@@ -232,6 +246,8 @@ function draw_scene(state)
     end
   end
 
+  palt()
+
 
 end
 
@@ -258,33 +274,24 @@ function draw_talking(state)
     draw_phasein(state)
   end
 
-  -- face
-  local stretch = 2
-  local a = -0.25 + 0.05 * cos(state.face_t / 300)
-
-  -- how much to sample angle in rendering
-  local mod = min(1, sqr(state.face_t/ 60))
-  -- how much to offset distance in rendering
-  local mod_d = sin(state.global_t / 1000) * 4 / (0.1 * state.face_t + 1)
-
-  local scale = 1.2 + 0.12*sin(state.face_t / 250)
-  local face_x = 95 - scale*12
-  local face_y = 35 - scale*16
-  rspr(state.face_sprite_x,state.face_sprite_y,face_x,face_y,24,32,scale,a, mod, mod_d, 11)
-
-  local mouth_move_mult = 0.66
-  local mouth_move_rate = 28
-  if state.text != nil and state.dialogue_t * text_speed * mouth_move_mult < #state.text then
-    if state.s > 0 and state.t % mouth_move_rate < mouth_move_rate/2 then
-      rspr(24,32,face_x + 1, face_y, 16,32, scale, a, mod, mod_d, 11)
-    end
-  end
-
   if state.text != nil then
     draw_text(state.dialogue_t * text_speed, state.text, 4, text_y, 7)
   end
 
-  palt()
+  -- face
+  if state.draw_face then
+    local face_x = 95 - state.face_scale*12
+    local face_y = 35 - state.face_scale*16
+    rspr(state.face_sprite_x,state.face_sprite_y,face_x,face_y,24,32,state.face_scale,state.face_angle, state.face_mod, state.face_mod_d, 11)
+
+    local mouth_move_mult = 0.66
+    local mouth_move_rate = 28
+    if state.text != nil and state.dialogue_t * text_speed * mouth_move_mult < #state.text then
+      if state.s > 0 and state.t % mouth_move_rate < mouth_move_rate/2 then
+        rspr(24,32,face_x + 1, face_y, 16,32, state.face_scale, state.face_angle, state.face_mod, state.face_mod_d, 11)
+      end
+    end
+  end
 end
 
 ------
@@ -472,6 +479,10 @@ function action_pressed()
   -- dont use inbuilt btnp because it has
   -- repeating
   return btn(4) and (not action_pressed_last_frame)
+end
+
+function lerp(x, y, scale)
+  return (x * (scale-1) + y) / scale
 end
 
 __gfx__
