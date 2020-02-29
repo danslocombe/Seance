@@ -100,8 +100,9 @@ function update_talking(state)
     if is_end then
       state.phase_col = 0
       state.phase_bg_bits = 0
-      state.face_scale = lerp(state.face_scale, 1.2 + 0.12*sin(state.global_t / 250), 40)
+      state.face_scale = lerp(state.face_scale, 1.15 + 0.08*sin(state.global_t / 250), 40)
       state.face_mod = 0
+      state.noise_mag = 0.0125
     else
       state.face_scale = 0
       state.phase_col += 0.4 * speed
@@ -141,13 +142,13 @@ function update_talking(state)
       state.noise_mag = 0
     end
 
-    state.face_angle = -0.25 + 0.05 * cos(state.t / 300)
+    state.face_angle = -0.25 + 0.025 * cos(state.global_t / 300)
 
     -- how much to sample angle in rendering
     state.face_mod = min(1, sqr(state.t/ 60))
     -- how much to offset distance in rendering
     state.face_mod_d = sin(state.global_t / 1000) * 4 / (0.1 * state.t + 1)
-    state.face_scale = 1.2 + 0.12*sin(state.global_t / 250)
+    state.face_scale = 1.15 + 0.08*sin(state.global_t / 250)
   end
 
   if (state.dialogue_state < #state.dialogue) then
@@ -253,13 +254,19 @@ end
 
 function draw_phasein(state)
   --local pat_speed = sqrt(state.phase_col
-  local pat = generate_fillp(state.t, 32, state.phase_bg_bits, false)
-  fillp(pat)
-  rectfill(0, 0, 128, 128, state.phase_col)
-  fillp()
+  if (state.noise_mag > 0) then
+    cls(0)
+    dump_noise(state.noise_mag)
+  else
+    local pat = generate_fillp(state.t, 32, state.phase_bg_bits, false)
+    fillp(pat)
+    rectfill(0, 0, 128, 128, state.phase_col)
+    fillp()
 
-  --rectfill(0, text_y - 2, 128, text_y + 8, 0)
-  rectfill(0, state.phase_text_y, 128, state.phase_text_y + 4, 0)
+    --rectfill(0, text_y - 2, 128, text_y + 8, 0)
+    rectfill(0, state.phase_text_y, 128, state.phase_text_y + 4, 0)
+
+  end
 end
 
 function draw_talking(state)
@@ -394,7 +401,7 @@ function rspr(sx, sy, tx, ty, w, h, scale, a, modp, modd, bgcol)
   local tx_mid = tx + kw/2
   local ty_mid = ty + kh/2
 
-  a = -0.25
+  --a = -0.25
   --modp = 1
 
   local sample_angle_min = a
