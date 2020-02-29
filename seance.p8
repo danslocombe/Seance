@@ -3,37 +3,45 @@ version 18
 __lua__
 
 text_speed = 0.35
+global_state = nil
+dialogue_y = 6
 
-state = {}
-updatefn = nil
-drawfn = nil
+action_pressed_last_frame = false
 
 function _init()
-  --state = init_intro()
-  state = init_talking()
+  --global_state = init_intro()
+  global_state = init_talking()
 end
 
 function _update60()
-  if updatefn != nil then
-    updatefn(state)
+  if global_state != nil then
+    global_state.updatefn(global_state)
   end
+
+  action_pressed_last_frame = btn(4)
 end
 
 function _draw()
-  if drawfn != nil then
-    drawfn(state)
+  if global_state != nil then
+    global_state.drawfn(global_state)
   end
 end
 
 ------
+function init_phasein()
+end
+------
 
 function init_talking()
-  s = {
+  local s = {
     t = 0,
     s = 0,
+    global_t = 0,
     state_init = true,
+    updatefn = update_talking,
+    drawfn = draw_talking,
 
-    filter_scene = false,
+    filter_scene = true,
     filter_pat = 0,
     noise_mag = 0,
 
@@ -44,10 +52,11 @@ function init_talking()
     dialogue_state = 0,
     dialogue_t = 0,
     dialogue = {},
-  }
 
-  updatefn = update_talking
-  drawfn = draw_talking
+    phase_text_y = 0,
+    phase_col = 0,
+    phase_bg_bits = 0,
+  }
 
   return s
 end
@@ -56,15 +65,41 @@ function update_talking(state)
   state.t += 1
   state.face_t += 1
   state.dialogue_t += 1
+  state.global_t += 1
 
   if state.s == 0 then
     if state.state_init then
       state.dialogue = {}
+      add(state.dialogue, "i beckon thee ........")
+      add(state.dialogue, "feel .... ... ...  to the")
+      add(state.dialogue, "vibrations ................")
+      add(state.dialogue, "....... fetch the .... ....")
+      add(state.dialogue, "i sense a presence amongst us")
+      add(state.dialogue, "i sense a presence amongst us")
+      add(state.dialogue, "come close everyone we can ...")
+      add(state.dialogue, "susan please stop")
+      add(state.dialogue, "class this is serious please")
+      add(state.dialogue, "        stop               ")
       add(state.dialogue, "light the candles darling")
     end
     state.filter_scene = true
     state.filter_pat = 0b0000000000000000.1
     state.face_t = 0
+    local speed = sqr((1 + state.dialogue_state) * 0.15)
+    local is_end = (state.dialogue_state == #state.dialogue - 2 and abs(state.phase_text_y - dialogue_y) < 1)
+      or state.dialogue_state == #state.dialogue - 1
+    if is_end then
+      state.phase_text_y = dialogue_y
+      speed = 0
+    end
+    state.phase_text_y = (state.phase_text_y + speed) % 128
+    if is_end then
+      state.phase_col = 0
+      state.phase_bg_bits = 0
+    else
+      state.phase_col += 0.4 * speed
+      state.phase_bg_bits += 0.01 * speed
+    end
   elseif state.s == 1 then
     if state.state_init then
       state.dialogue = {}
@@ -89,33 +124,20 @@ function update_talking(state)
 
   if (state.s > 0) then
     state.filter_scene = true
-    local y = 0
-    if (state.t % 32) < 16 then
-      y = 0b1110110111101111.1
-    else
-      y = 0b0111101101111011.1
-    end
 
-    if state.s > 1 then
-      state.filter_pat = y
-    else
-      state.filter_pat = 0b0000000000000000.1
-      for i = 0,(min(32, state.t/7)) do
-        local x = shl(1, i)
-        state.filter_pat = bor(state.filter_pat, x)
-      end
-      state.filter_pat = band(state.filter_pat, y)
-    end
-
+    local fade_in = state.s == 1
+    state.filter_pat = generate_fillp(state.t, 32, state.t/7, not fade_in)
 
     if state.s == 1 then
       state.noise_mag = 1 / state.t
+    else
+      state.noise_mag = 0
     end
   end
 
   if (state.dialogue_state < #state.dialogue) then
     state.text = state.dialogue[state.dialogue_state+1]
-    if btnp(4) then
+    if action_pressed() then
       if state.dialogue_t * text_speed < #state.text then
         state.dialogue_t = 1000
       else
@@ -134,14 +156,11 @@ function update_talking(state)
   end
 end
 
-function draw_talking(state)
-  cls(0)
+function draw_scene(state)
   local y = 128 * 3 / 4 - 8
   local x = 32
   palt(11, true)
   palt(0, false)
-
-  --dump_noise(0.01)
 
   -- paintings
   spr(18, x + 11, y - 14)
@@ -204,41 +223,65 @@ function draw_talking(state)
 
   -- effects
 
-  if (state.noise_mag > 0) then
+  if (state.noise_mag > 0.01) then
     dump_noise(state.noise_mag)
+    if (state.filter_scene) then
+      fillp(state.filter_pat)
+      rectfill(0, 0, 128, 128, 0)
+      fillp()
+    end
   end
 
-  if (state.filter_scene) then
-    --fillp(0b1010010110100101.1)
-    --fillp(0b0101101001011010.1)
-    --if (state.filter_b) then
-    --end
-    fillp(state.filter_pat)
-    rectfill(0, 0, 128, 128, 0)
-    --rectfill(10, 64, 118, 128, 0)
-    fillp()
+
+end
+
+function draw_phasein(state)
+  --local pat_speed = sqrt(state.phase_col
+  local pat = generate_fillp(state.t, 32, state.phase_bg_bits, false)
+  fillp(pat)
+  rectfill(0, 0, 128, 128, state.phase_col)
+  fillp()
+
+  --rectfill(0, text_y - 2, 128, text_y + 8, 0)
+  rectfill(0, state.phase_text_y, 128, state.phase_text_y + 4, 0)
+end
+
+function draw_talking(state)
+
+  local text_y = dialogue_y
+
+  if (state.s > 0) then
+    cls(0)
+    draw_scene(state)
+  else
+    text_y = state.phase_text_y
+    draw_phasein(state)
   end
 
   -- face
   local stretch = 2
   local a = -0.25 + 0.05 * cos(state.face_t / 300)
-  --rspr(0,32,24,32,a,face_x,face_y,24*stretch,32*stretch,11)
+
+  -- how much to sample angle in rendering
   local mod = min(1, sqr(state.face_t/ 60))
+  -- how much to offset distance in rendering
+  local mod_d = sin(state.global_t / 1000) * 4 / (0.1 * state.face_t + 1)
+
   local scale = 1.2 + 0.12*sin(state.face_t / 250)
   local face_x = 95 - scale*12
   local face_y = 35 - scale*16
-  rspr_basic(state.face_sprite_x,state.face_sprite_y,face_x,face_y,24,32,scale,a, mod, 11)
+  rspr(state.face_sprite_x,state.face_sprite_y,face_x,face_y,24,32,scale,a, mod, mod_d, 11)
 
   local mouth_move_mult = 0.66
   local mouth_move_rate = 28
   if state.text != nil and state.dialogue_t * text_speed * mouth_move_mult < #state.text then
     if state.s > 0 and state.t % mouth_move_rate < mouth_move_rate/2 then
-      rspr_basic(24,32,face_x + 1, face_y, 16,32, scale, a, mod, 11)
+      rspr(24,32,face_x + 1, face_y, 16,32, scale, a, mod, mod_d, 11)
     end
   end
 
   if state.text != nil then
-    draw_text(state.dialogue_t * text_speed, state.text, 4, 6, 7)
+    draw_text(state.dialogue_t * text_speed, state.text, 4, text_y, 7)
   end
 
   palt()
@@ -247,10 +290,13 @@ end
 ------
 
 function init_intro()
-  s = {t = 0, s = 0, complete = 160}
-
-  updatefn = update_intro
-  drawfn = draw_intro
+  s = {
+    t = 0,
+    s = 0,
+    complete = 160,
+    updatefn = update_intro,
+    drawfn = draw_intro,
+  }
 
   return s
 end
@@ -258,7 +304,7 @@ end
 function update_intro(state)
   state.t += 1
 
-  if (btnp(4)) then
+  if action_pressed() then
     if state.t < state.complete then
       state.t = state.complete
     else
@@ -268,7 +314,8 @@ function update_intro(state)
   end
 
   if state.s >= 3 then
-    state = init_talking()
+    global_state = init_talking()
+    cls(0)
   end
 end
 
@@ -330,9 +377,7 @@ function dump_noise(mag)
   end
 end
 
-function rspr_basic(sx, sy, tx, ty, w, h, scale, a, modp, bgcol)
-  --local s1 = sin(a + 0.125)
-  --local c1 = cos(a + 0.125)
+function rspr(sx, sy, tx, ty, w, h, scale, a, modp, modd, bgcol)
   local k = scale
   local kw = k*w
   local kh = k*h
@@ -342,30 +387,91 @@ function rspr_basic(sx, sy, tx, ty, w, h, scale, a, modp, bgcol)
   local tx_mid = tx + kw/2
   local ty_mid = ty + kh/2
 
-  for y=0,kh-1 do
-    for x=0,kw-1 do
+  a = -0.25
+  --modp = 1
+
+  local sample_angle_min = a
+  local sample_angle_max = a + modp
+  local sample_angle_mid = modp / 2
+
+  local buffer = 0
+  for y=-buffer,kh-1+buffer do
+    for x=-buffer,kw-1+buffer do
       local d_tx = x - kw/2
       local d_ty = y - kh/2
-      local dist = sqrt((d_tx * d_tx) + (d_ty * d_ty)) / k
+      local dist = modd + sqrt((d_tx * d_tx) + (d_ty * d_ty)) / k
       local angle = atan2(d_ty, d_tx)
-      local new_angle = a + modp * angle + rnd(0.005)
-      --local new_angle = 0 + a
-      local sget_x = flr(sx_mid + dist*cos(new_angle))
-      local sget_y = flr(sy_mid + dist*sin(new_angle))
+      local sample_angle = (a + modp * angle) -- + rnd(0.005))
+      sget_x = (sx_mid + dist*cos(sample_angle))
+      sget_y = (sy_mid + dist*sin(sample_angle))
 
-      if sget_x >= sx and sget_x <= sx + w and sget_y >= sy and sget_y <= sy + h then
-        local col = sget(sget_x, sget_y)
+        if sget_x >= sx and sget_x <= sx + w and sget_y >= sy and sget_y <= sy + h then
+          local col = sget(sget_x, sget_y)
 
-        if (col != bgcol) then
-          pset(tx + x, ty + y, col)
+          if (col != bgcol) then
+            pset(tx + x, ty + y, col)
+          end
         end
-      end
     end
   end
 end
 
 function sqr(x)
   return x * x
+end
+
+function generate_fillp(t, k, bits_selector, just_filter)
+    local filter = 0
+    if (t % k) < k/2 then
+      filter = 0b1110110111101111.1
+    else
+      filter = 0b0111101101111011.1
+    end
+
+    if (just_filter) then
+      return filter
+    end
+
+    local pat = 0b0000000000000000.1
+    for i = 0,(min(k, bits_selector)) do
+      local x = shl(1, i)
+      pat = bor(pat, x)
+    end
+
+    return band(pat, filter)
+end
+
+function map_angle(x, a, k)
+      --local sample_angle = normalize_angle((a + modp * angle + rnd(0.005)))
+      --local sample_angle = (a + modp * angle + rnd(0.005))
+          -- sample backwards to prevent branch cut
+
+          --new_angle = 1-new_angle
+        --new_angle = new_angle / 2
+        --sget_x = flr(sx_mid + dist*cos(new_angle))
+        --sget_y = flr(sy_mid + dist*sin(new_angle))
+  if (x < 0.5) then
+    if (x < 0.25) then
+      --return 0
+    end
+    return a + x * k
+  end
+  return a + k*(1 - x)
+  --return a + x
+end
+
+function normalize_angle(x)
+  if (x < 0) then
+    return 1 + x
+  end
+
+  return x
+end
+
+function action_pressed()
+  -- dont use inbuilt btnp because it has
+  -- repeating
+  return btn(4) and (not action_pressed_last_frame)
 end
 
 __gfx__
@@ -409,17 +515,17 @@ bb777770ffffffffff007777bbbbbbbbbbbbbbbbbbbbb111e1101e10ee1e0111bbbbbbbbbbbbbbbb
 bb777700fffffffffff00777bbbbbbbbbbbbbbbbbbbbbe11e1100e101eee0111bebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 b777770fffffffffffff0777bbbbbbbbbbbbbbbbbbbbb0e1eee00e101eee01e11eebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 b777700aaaaffffffaaf0077bbbbbbbbbbbbbbbbbbbbe001eee000e00ee00ee11eeebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b77770ffffaaaaaaaafff077ffaaaaaaaafff077bbbee0400000000e0000e001eeeeebbb0000e00ebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b77770ffffffffffffffff07ffffffffffffff07bbbee0440000444444404001eeeeebbb4440400ebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b77700f0000ffffff0000ff0000ffffff0000ff0bbbee01111144444411110011eeeebbb41111000bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b7770ff444004ff400444ff044004ff400444ff0bbbee044441144441144440e1eeeebbb11444400bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b7770f2222244ff4442222ff22444ff4444422ffbbbe0422222444442222220e99eeebbb44222200bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b770044107444ff44410742f22244ff44422242fbbee0440707444444070724040eeebbb44707020bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b770f4a100aaffff4a100aff0022ffff422004ffbbee0440007444444000744440eebebb44700040bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b770fff4444ffffff4444fff444ffffff4444fffbbee0044444444444444444440eeeebb44444440bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b770ffffffffffaffffffff4bbbbbbbbbbbbbbbbbbee0044444444444444444400eebebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b77704ffffffffaffffffff4bbbbbbbbbbbbbbbbbeee0044444404444444444400eeebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b777044fffff0faf0ffff444bbbbbbbbbbbbbbbbbebe0004444404440444444400eeebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+b77770ffffaaaaaaaafff077ffaaaaaaaafff077bbee00eeeeeeeee4eeeeeeeeeeeeebbb0000e00ebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+b77770ffffffffffffffff07ffffffffffffff07bbbee0e0000000ee0000e001eeeeebbb4440400ebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+b77700f0000ffffff0000ff0000ffffff0000ff0bbbee04400004444444040011eeeebbb41111000bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+b7770ff444004ff400444ff044004ff400444ff0bbbee01111144444411110011eeeebbb11444400bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+b7770f2222244ff4442222ff22444ff4444422ffbbbee044441144441144440e99eeebbb44222200bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+b770044107444ff44410742f22244ff44422242fbbbe0422222444442222220e40eeebbb44707020bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+b770f4a100aaffff4a100aff0022ffff422004ffbbee0440707444444070724040eebebb44700040bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+b770fff4444ffffff4444fff444ffffff4444fffbbee0440007444444000744440eeeebb44444440bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+b770ffffffffffaffffffff4bbbbbbbbbbbbbbbbbbee0044444444444444444000eebebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+b77704ffffffffaffffffff4bbbbbbbbbbbbbbbbbeee0044444404444444444000eeebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+b777044fffff0faf0ffff444bbbbbbbbbbbbbbbbbebe0004444404440444444000eeebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 b777044444000faf00044420bbbbbbbbbbbbbbbbbeee0044444094440044444040eeebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 bbb702244200ff4ff0044220bbbbbbbbbbbbbbbbbeee004444904444404444400eeebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 bbb7b0222200000000222200bbbbbbbbbbbbbbbbbeeebb0444400000004444409eeebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
