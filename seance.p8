@@ -12,8 +12,8 @@ action_pressed_last_frame = false
 function _init()
   cls(0)
   --global_state = init_intro()
-  --global_state = init_talking()
   global_state = init_dead()
+  --global_state = init_talking()
 end
 
 function _update60()
@@ -45,7 +45,8 @@ function init_dead()
     filter_pat = 0,
     noise_mag = 0,
 
-    text = "",
+    text = nil,
+    interupt_text = nil,
     dialogue_state = 0,
     dialogue_t = 0,
     dialogue = {},
@@ -56,8 +57,10 @@ function init_dead()
     phase_col = 0,
     phase_bg_bits = 0,
 
-    player = make_dead_player(32, 32),
+    player = make_dead_player(64, 22),
   }
+
+  music(0)
 
   add(state.dialogue, "i beckon thee ........")
   add(state.dialogue, "feel .... ... ...  to the")
@@ -75,23 +78,27 @@ function init_dead()
 
 
   add(state.objects, {spr = 16, x = 100, y = 32, text = {"you are reminded of", "something deep inside you"} })
+  add(state.objects, {spr = 16, x = 46, y = 26, text = {"the scent of roses fills you"} })
+  add(state.objects, {spr = 16, x = 40, y = 48, text = {"the scent brings a","great melencholy"} })
 
-  add(state.objects, {spr = 16, x = 40, y = 42, text = {"the scent brings a","great melencholy"} })
-  add(state.objects, {spr = 16, x = 40, y = 52, text = {"wow a cool plant"} })
+  add(state.objects, {spr = 16, x = 12, y = 59, text = {"wow a cool plant"} })
   add(state.objects, {spr = 16, x = 40, y = 80, text = {"what is worse,", "the pain of the remembering,", " or the pain of the smelling?", text_pause = 10}})
+  add(state.objects, {spr = 16, x = 70, y = 52, text = {"you are transported back home,", "your mother smiles", text_pause = 12 }})
+  add(state.objects, {spr = 16, x = 98, y = 89, text = {"actually you dont really like", "this one" }})
+  --add(state.objects, {spr = 16, x = 10, y = 82, text = {"your nose births the", "disappointment anew" }})
   --add(state.objects, {spr = 16, x = 40, y = 80, text = "the pain of remembering fills you, is this the most pain?" })
   --add(state.objects, {spr = 16, x = 60, y = 62, text = "your mother is laughing, these flowers in her hair" })
   --add(state.objects, {spr = 16, x = 60, y = 102, text = "memory waters the plant with attention" })
-  add(state.objects, {spr = 16, x = 50, y = 52, text = {"you are transported back home,", "your mother smiles", text_pause = 12 }})
-  add(state.objects, {spr = 16, x = 60, y = 92, text = {"actually you dont really like", "this one" }})
-  --add(state.objects, {spr = 16, x = 10, y = 82, text = {"your nose births the", "disappointment anew" }})
-  add(state.objects, {spr = 28, x = 30, y = 82, text = {"my soul is a vessel,", "and my nose a steam paddle", text_pause = 10} })
 
-  add(state.objects, {spr = 16, x = 40, y = 32, text = {"the scent of roses fills you"} })
   --add(state.objects, {spr = 16, x = 100, y = 32, text = "you reminise" })
-  add(state.objects, {spr = 20, x = 3, y = 100, text = {"an oil painting in front of you", "it is ugly and shouldn't be here"}})
-  add(state.objects, {spr = 25, x = 90, y = 100, text = {"the smell of burning wax", "evokes...", "evokes...", text_pause = 12}})
-  add(state.objects, {spr = 25, x = 90, y = 10, text = {"saint waningus\'", "garden of smells"}})
+  add(state.objects, {spr = 19, x = 90, y = 10, text = {"saint waningus\'", "garden of smells"}})
+
+  add(state.objects, {spr = 20, x = 23, y = 100, text = {"an oil painting in front", "of you, it is ugly and ", "shouldn't be here", text_pause = 2}})
+  add(state.objects, {spr = 25, x = 76, y = 115, text = {"the smell of burning wax", "evokes...", "evokes...", text_pause = 12}})
+
+  add(state.objects, {spr = 28, x = 25, y = 78, text = {"my soul is a vessel,", "and my nose a steam paddle", text_pause = 10} })
+  --add(state.objects, {spr = 28, x = 84, y = 82, text = {"ah i could smell you coming", "i was reminded of my dog", text_pause = 12} })
+  --add(state.objects, {spr = 28, x = 84, y = 82, text = {"i prefer the feeling den", "i was reminded of my dog", text_pause = 12} })
 
   return state
 end
@@ -104,6 +111,7 @@ function make_dead_player(x, y)
     yvel = 0,
     spr_t = 0,
     spr_look_right = false,
+    footstep_t = 0,
     update = function(p)
       local spd = 0.85
       local t_xvel = 0
@@ -123,10 +131,12 @@ function make_dead_player(x, y)
         t_yvel = spd
       end
 
-      local d = sqrt(sqr(t_xvel) + sqr(t_yvel))
-      local a = 0.25 + atan2(-t_yvel, t_xvel)
-      t_xvel = d * cos(a)
-      t_yvel = d * sin(a)
+      --local d = sqrt(sqr(t_xvel) + sqr(t_yvel))
+      if t_xvel != 0 or t_yvel != 0 then
+        local a = 0.25 + atan2(-t_yvel, t_xvel)
+        t_xvel = spd * cos(a)
+        t_yvel = spd * sin(a)
+      end
 
       local k = 12
       local k_stop = 5
@@ -142,9 +152,22 @@ function make_dead_player(x, y)
       if t_xvel == 0 and t_yvel == 0 then
         p.spr_t = 0
       end
-
+        
       p.xvel = lerp(p.xvel, t_xvel, xk)
       p.yvel = lerp(p.yvel, t_yvel, yk)
+
+      local p_spd = sqrt(sqr(p.xvel) + sqr(p.yvel))
+      p.spr_t += p_spd
+
+      if (p_spd > 0.0001) then
+        p.footstep_t -= p_spd
+        if (p.footstep_t < 0) then
+          p.footstep_t = 5
+          sfx(4)
+        end
+      else
+        p.footstep_t = 0
+      end
 
       p.x += p.xvel
       p.y += p.yvel
@@ -154,7 +177,6 @@ function make_dead_player(x, y)
       local d = sqr(p.xvel) + sqr(p.yvel)
       local s = 28
       if d > 0.1 then
-        p.spr_t += sqrt(d)
         s = 29
         if (p.spr_t / 3) % 2 < 1 then
           s = 30
@@ -185,6 +207,7 @@ function update_dead(state)
       text = o.text
     end
   end
+
   state.dialogue_t = dialogue_t
   state.text = text
 
@@ -197,6 +220,7 @@ function update_dead(state)
     state.phase_text_y = dialogue_y
     speed = 0
   end
+
   state.phase_text_y = (state.phase_text_y + speed) % 128
   state.face_scale = 0
   state.phase_col += 0.4 * speed
@@ -232,6 +256,13 @@ function draw_dead(state)
         before += #text + text_pause
       end
     end
+  end
+
+  if state.interupt_text != nil then
+    local yy = state.phase_text_y
+    --rectfill(0, yy, 128, yy + 4, 0)
+    rectfill(0, yy-1, 128, yy + 5, 0)
+    draw_text(state.dialogue_t * text_speed_internal - before, state.interupt_text, 4, yy, 7)
   end
 
   state.player.draw(state.player)
@@ -582,6 +613,9 @@ function draw_intro(state)
 end
 
 function draw_text(t, text, x, y, col)
+  if t < #text then
+    sfx(0)
+  end
   local s = sub(text, 1, max(0, min(t, #text)))
   print(s, x, y, col)
 end
@@ -707,14 +741,14 @@ __gfx__
 00700700bb4444bb444444444444444444444444bbddddbbbb2222bbbb6666bbbbbb7bbbbbbb7bbbbbbb7bbbbbbb7bbbbbbb7bbbbbbb7bbbbbbb7bbbbbbb7bbb
 00000000bb44444b444444444444444444444444bd44ddbbbbf22fbbbbfeefbbbbbb6bbbbbbb6bbbbbbb6bbbbbbb6bbbbbbb6bbbbbbb6bbbbbbb6bbbbbbb6bbb
 00000000bb44444bb4bbbbbbbbbbbbbbbbbbbb4bbdddddbbbbddddbbbbeeeebbbbbb6bbbbbbb6bbbbbbb6bbbbbbb6bbbbbbb6bbbbbbb6bbbbbbb6bbbbbbb6bbb
-bbbbbbbbbb7777bbbbbbbbbb00000000bbbbbbbbbb1111bbbb9999bbbb4444bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb7777bbbb7777bbbbbbbbbb
-bbbb8bbb777fffbbb444444b00000000b444444bbbe1e11bb999999bbb4444bbbbbbb8bbbbbb8bbbbbb8bbbbbbbb8bbbbb7777bbbb0707bbbb0707bbbbbbbbbb
-bbb888bb777fffbbb411714b00000000b411a14bbb4441ebb99ff99bbbbffbbbbbbb8bbbbbb8bbbbbbbb8bbbbbbbb8bbbb0707bbbb7777bbbb7777bbbbbbbbbb
-bbb888bb7b7fffbbb417f14b00000000b41afa4bbb444eebbb9ff9bbbb6666bbbbb89bbbbbb9bbbbbbbb98bbbbbbb9bbbb7777bbbb7777bbbb7777bbbbbbbbbb
-bbb3bbbbbb4444bbb432234b00000000b4adda4bbbddddbbbb2222bbbb6666bbbbbbabbbbbbbabbbbbbbabbbbbbbabbbbb7777bbbb7bb7bbbb7bb7bbbbbbbbbb
-bbbb3bbbbb4444bbb433224b00000000b4dd334bbbd4ddbbbb2222bbbbf66fbbbbbb7bbbbbbb7bbbbbbb7bbbbbbb7bbbbb7bb7bbbb7bb7bbbb7bb7bbbbbbbbbb
-bbbb3bbbbb44444bb444444b00000000b444444bbd4dddbbbbfddfbbbbfeefbbbbbb6bbbbbbb6bbbbbbb6bbbbbbb6bbbbb7bb7bbbb7bbbbbbbbbb7bbbbbbbbbb
-bbbb3bbbbb44444bbbbbbbbb00000000bbbbbbbbbddddbbbbbddddbbbbeeeebbbbbb6bbbbbbb6bbbbbbb6bbbbbbb6bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbbbbbb7777bbbbbbbbbb44444444bbbbbbbbbb1111bbbb9999bbbb4444bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb7777bbbb7777bbbbbbbbbb
+bbbb8bbb777fffbbb444444b4ffffff4b444444bbbe1e11bb999999bbb4444bbbbbbb8bbbbbb8bbbbbb8bbbbbbbb8bbbbb7777bbbb0707bbbb0707bbbbbbbbbb
+bbb888bb777fffbbb411714b4ffffff4b411a14bbb4441ebb99ff99bbbbffbbbbbbb8bbbbbb8bbbbbbbb8bbbbbbbb8bbbb0707bbb777777bb777777bbbbbbbbb
+bbb888bb7b7fffbbb417f14b4ffffff4b41afa4bbb444eebbb9ff9bbbb6666bbbbb89bbbbbb9bbbbbbbb98bbbbbbb9bbbb7777bbbb7777bbbb7777bbbbbbbbbb
+bbb3bbbbbb4444bbb432234b44444444b4adda4bbbddddbbbb2222bbbb6666bbbbbbabbbbbbbabbbbbbbabbbbbbbabbbb777777bbb7bb7bbbb7bb7bbbbbbbbbb
+bbbb3bbbbb4444bbb433224bbb4bb4bbb4dd334bbbd4ddbbbb2222bbbbf66fbbbbbb7bbbbbbb7bbbbbbb7bbbbbbb7bbbbb7bb7bbbb7bbbbbbbbbb7bbbbbbbbbb
+bbbb3bbbbb44444bb444444bbb4bb4bbb444444bbd4dddbbbbfddfbbbbfeefbbbbbb6bbbbbbb6bbbbbbb6bbbbbbb6bbbbb7bb7bbbb7bbbbbbbbbb7bbbbbbbbbb
+bbbb3bbbbb44444bbbbbbbbbbb4bb4bbbbbbbbbbbddddbbbbbddddbbbbeeeebbbbbb6bbbbbbb6bbbbbbb6bbbbbbb6bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 bbbbbbbbbbbbbbbb555555550000000000000000bbb000bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 d4d4d444444d4d4dbbbb5bbb0000000000000000bb0040bbbbbbbbbbbbbbbbbbbbbb8bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 dddddbbbbbbdddddbbbb5bbb0000000000000000bbb44bbbbbbbbbbbbbbbbbbbbbb888bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
@@ -763,3 +797,12 @@ bbbbbbb0fffaaaaaaff0000bfffaaaaaaff0000bbbbbbbbbb004444444000bbbbbbbbbbbbbbbbbbb
 bbbbbbb000ffffffa00bbbbb00ffffffa00bbbbbbbbbbbbbbb000444000bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 bbbbbbbbbb00000000bbbbbbbb00000000bbbbbbbbbbbbbbbbbbb00000bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+__sfx__
+0101000023050230502305032050320503205031000160002300022000210001f0001e0001b000170001600000000000000000000000000000000000000000000000000000000000000000000000000000000000
+018300000c214182140c214184140c214182140c214184140a214162140a214164140521411214052141141400004000000000000000000000000000000000000000000000000000000000000000000000000000
+011800000c0100c0200c0300c0400c0400c0300c0200c0100c0100c0200c0300c0400c0300c0200c0100c0100c0100c0200c0300c0300c0200c0100c0100c0100c0100c0200c0300c0400c0500c0400c0300c020
+0110000000000000000000000000000001a0101a0501a010000000000021010210502101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0101000017030170300b03002030020300203031000160002300022000210001f0001e0001b000170001600000000000000000000000000000000000000000000000000000000000000000000000000000000000
+__music__
+03 02034344
+
