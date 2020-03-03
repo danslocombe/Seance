@@ -7,13 +7,16 @@ text_speed_internal = text_speed * 1.5
 global_state = nil
 dialogue_y = 6
 
+enable_sfx = true
+enable_music = true
+
 action_pressed_last_frame = false
 
 function _init()
   cls(0)
   --global_state = init_intro()
   global_state = init_dead()
-  --global_state = init_talking()
+  global_state = init_talking()
 end
 
 function _update60()
@@ -47,7 +50,8 @@ function init_dead()
 
     text = nil,
     interupt_text = nil,
-    dialogue_state = 0,
+    interupt_text_t = 0,
+    dialogue_state = 1,
     dialogue_t = 0,
     dialogue = {},
 
@@ -58,6 +62,9 @@ function init_dead()
     phase_bg_bits = 0,
 
     player = make_dead_player(64, 22),
+
+    smelled_serious = 0,
+    smelled_funny = 0,
   }
 
   music(0)
@@ -67,24 +74,24 @@ function init_dead()
   add(state.dialogue, "vibrations ................")
   add(state.dialogue, "....... fetch the .... ....")
   add(state.dialogue, "i sense a presence amongst us")
+  add(state.dialogue, "come close everyone we can ...")
+  add(state.dialogue, "susan please stop")
+  add(state.dialogue, "please everone sit down an be ")
+  add(state.dialogue, "quiet class is in progress")
+  add(state.dialogue, "everyone this is serious please")
+  add(state.dialogue, "the spirit is nearing us quick!")
+  add(state.dialogue, "            stop           ")
+  add(state.dialogue, "light the candles darling")
 
-  -- your favourite
-  -- 
-  -- you are reminded of something deep inside you
-  -- wow a cool plant
-  -- the scent brings a great melencholy
-  -- your mother is laughing these flowers in her hair
   -- you cant remember this one
-
-
   add(state.objects, {spr = 16, x = 100, y = 32, text = {"you are reminded of", "something deep inside you"} })
   add(state.objects, {spr = 16, x = 46, y = 26, text = {"the scent of roses fills you"} })
   add(state.objects, {spr = 16, x = 40, y = 48, text = {"the scent brings a","great melencholy"} })
 
-  add(state.objects, {spr = 16, x = 12, y = 59, text = {"wow a cool plant"} })
-  add(state.objects, {spr = 16, x = 40, y = 80, text = {"what is worse,", "the pain of the remembering,", " or the pain of the smelling?", text_pause = 10}})
+  add(state.objects, {spr = 16, x = 12, y = 59, text = {"wow a cool plant"}, funny = true })
+  add(state.objects, {spr = 16, x = 40, y = 80, text = {"what is worse,", "the pain of the remembering,", " or the pain of the smelling?", text_pause = 10}, funny = true})
   add(state.objects, {spr = 16, x = 70, y = 52, text = {"you are transported back home,", "your mother smiles", text_pause = 12 }})
-  add(state.objects, {spr = 16, x = 98, y = 89, text = {"actually you dont really like", "this one" }})
+  add(state.objects, {spr = 16, x = 98, y = 89, text = {"actually you dont really like", "this one" }, funny = true})
   --add(state.objects, {spr = 16, x = 10, y = 82, text = {"your nose births the", "disappointment anew" }})
   --add(state.objects, {spr = 16, x = 40, y = 80, text = "the pain of remembering fills you, is this the most pain?" })
   --add(state.objects, {spr = 16, x = 60, y = 62, text = "your mother is laughing, these flowers in her hair" })
@@ -93,10 +100,10 @@ function init_dead()
   --add(state.objects, {spr = 16, x = 100, y = 32, text = "you reminise" })
   add(state.objects, {spr = 19, x = 90, y = 10, text = {"saint waningus\'", "garden of smells"}})
 
-  add(state.objects, {spr = 20, x = 23, y = 100, text = {"an oil painting in front", "of you, it is ugly and ", "shouldn't be here", text_pause = 2}})
+  add(state.objects, {spr = 20, x = 23, y = 100, text = {"an oil painting in front", "of you, it is ugly and ", "shouldn't be here", text_pause = 2}, funny = true})
   add(state.objects, {spr = 25, x = 76, y = 115, text = {"the smell of burning wax", "evokes...", "evokes...", text_pause = 12}})
 
-  add(state.objects, {spr = 28, x = 25, y = 78, text = {"my soul is a vessel,", "and my nose a steam paddle", text_pause = 10} })
+  add(state.objects, {spr = 28, x = 67, y = 78, text = {"\"my soul is a vessel,", "and my nose the steam paddle\"", text_pause = 10}, funny = true })
   --add(state.objects, {spr = 28, x = 84, y = 82, text = {"ah i could smell you coming", "i was reminded of my dog", text_pause = 12} })
   --add(state.objects, {spr = 28, x = 84, y = 82, text = {"i prefer the feeling den", "i was reminded of my dog", text_pause = 12} })
 
@@ -172,8 +179,12 @@ function make_dead_player(x, y)
       p.x += p.xvel
       p.y += p.yvel
     end,
-    draw = function(p)
+    draw = function(p, state)
       --rectfill(p.x, p.y, p.x+3, p.y+3, 7)
+      circfill(p.x, p.y, 1 + rnd(state.dialogue_state * 2), 0)
+      --if state.dialogue_state > 4 then
+        --circfill(p.x, p.y, 3 + rnd(8), 7)
+      --end
       local d = sqr(p.xvel) + sqr(p.yvel)
       local s = 28
       if d > 0.1 then
@@ -205,6 +216,13 @@ function update_dead(state)
     if d2 < 60 then
       dialogue_t = state.dialogue_t + 1
       text = o.text
+      if state.dialogue_t == 0 then
+        if o.funny then
+          state.smelled_funny += 1
+        else
+          state.smelled_serious += 1
+        end
+      end
     end
   end
 
@@ -213,15 +231,35 @@ function update_dead(state)
 
   state.filter_scene = true
   state.filter_pat = 0b0000000000000000.1
-  local speed = sqr((1 + state.dialogue_state) * 0.15)
-  local is_end = (state.dialogue_state == #state.dialogue - 2 and abs(state.phase_text_y - dialogue_y) < 1)
-    or state.dialogue_state == #state.dialogue - 1
-  if is_end then
-    state.phase_text_y = dialogue_y
-    speed = 0
+
+  local speed = 0
+
+  if state.smelled_serious < 1 or state.smelled_funny < 1 then
+  else
+    speed = sqr((state.dialogue_state) * 0.15)
+
+    if state.smelled_serious >= 4
+      and state.smelled_funny >= 4
+      and state.dialogue_state <= #state.dialogue then
+
+      state.interupt_text_t += 1
+      state.interupt_text = state.dialogue[state.dialogue_state]
+      if state.interupt_text_t * text_speed * 0.25 * sqrt(state.dialogue_state) > #state.interupt_text then
+        state.interupt_text_t = 0
+        state.dialogue_state += 1
+      end
+    end
   end
 
-  state.phase_text_y = (state.phase_text_y + speed) % 128
+  local is_end = (state.dialogue_state == #state.dialogue - 1 and abs(state.phase_text_y - dialogue_y) < 1)
+    or state.dialogue_state >= #state.dialogue
+  if is_end then
+    global_state = init_talking()
+    --state.phase_text_y = dialogue_y
+    --speed = 0
+  end
+
+  state.phase_text_y = (state.phase_text_y + 2 * speed) % 128
   state.face_scale = 0
   state.phase_col += 0.4 * speed
   state.phase_bg_bits += 0.3 * speed
@@ -241,6 +279,13 @@ function draw_dead(state)
   end
   palt()
 
+  if state.interupt_text != nil then
+    local yy = state.phase_text_y
+    rectfill(0, yy, 128, yy + 4, 0)
+    --rectfill(0, yy-1, 128, yy + 5, 0)
+    draw_text(state.interupt_text_t * text_speed_internal, state.interupt_text, 4, yy, 6, 5)
+  end
+
   if state.text != nil then
     local before = 0
     local text_pause = 2
@@ -249,7 +294,8 @@ function draw_dead(state)
     end
     for i,text in pairs(state.text) do
       if type(text) == "string" and state.dialogue_t * text_speed_internal > before then
-        local yy = state.phase_text_y + i * 6
+        --local yy = state.phase_text_y + i * 6
+        local yy = 100 + i * 6
         --rectfill(0, yy, 128, yy + 4, 0)
         rectfill(0, yy-1, 128, yy + 5, 0)
         draw_text(state.dialogue_t * text_speed_internal - before, text, 4, yy, 7)
@@ -258,14 +304,7 @@ function draw_dead(state)
     end
   end
 
-  if state.interupt_text != nil then
-    local yy = state.phase_text_y
-    --rectfill(0, yy, 128, yy + 4, 0)
-    rectfill(0, yy-1, 128, yy + 5, 0)
-    draw_text(state.dialogue_t * text_speed_internal - before, state.interupt_text, 4, yy, 7)
-  end
-
-  state.player.draw(state.player)
+  state.player.draw(state.player, state)
 end
 
 ------
@@ -311,16 +350,16 @@ function update_talking(state)
   if state.s == 0 then
     if state.state_init then
       state.dialogue = {}
-      add(state.dialogue, "i beckon thee ........")
-      add(state.dialogue, "feel .... ... ...  to the")
-      add(state.dialogue, "vibrations ................")
-      add(state.dialogue, "....... fetch the .... ....")
-      add(state.dialogue, "i sense a presence amongst us")
-      add(state.dialogue, "i sense a presence amongst us")
-      add(state.dialogue, "come close everyone we can ...")
-      add(state.dialogue, "susan please stop")
-      add(state.dialogue, "class this is serious please")
-      add(state.dialogue, "        stop               ")
+      --add(state.dialogue, "i beckon thee ........")
+      --add(state.dialogue, "feel .... ... ...  to the")
+      --add(state.dialogue, "vibrations ................")
+      --add(state.dialogue, "....... fetch the .... ....")
+      --add(state.dialogue, "i sense a presence amongst us")
+      --add(state.dialogue, "i sense a presence amongst us")
+      --add(state.dialogue, "come close everyone we can ...")
+      --add(state.dialogue, "susan please stop")
+      --add(state.dialogue, "class this is serious please")
+      add(state.dialogue, "           stop            ")
       add(state.dialogue, "light the candles darling")
       state.draw_face = true
     end
@@ -612,9 +651,9 @@ function draw_intro(state)
   --print("intern pete prepare the stethosisphere", 32, 32, 7)
 end
 
-function draw_text(t, text, x, y, col)
+function draw_text(t, text, x, y, col, sfx_id)
   if t < #text then
-    sfx(0)
+    sfx(sfx_id)
   end
   local s = sub(text, 1, max(0, min(t, #text)))
   print(s, x, y, col)
@@ -732,6 +771,18 @@ function lerp(x, y, scale)
   return (x * (scale-1) + y) / scale
 end
 
+--function d_sfx(x)
+--  if enable_sfx then
+--    sfx(x)
+--  end
+--end
+--
+--function d_music(x)
+--  if enable_music then
+--    music(x)
+--  end
+--end
+
 __gfx__
 00000000bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb8bbbbbb8bbbbbbbb8bbbbbbbbbbbbbbb8bbbbbbbb8bbbbbb8bbb
 00000000bb7777bbbbbbbbbbbbbbbbbbbbbbbbbbbb1111bbbb9999bbbb4444bbbbbb8bbbbbb8bbbbbbbb8bbbbbbbb8bbbbbb8bbbbbbbb8bbbbbb8bbbbbb8bbbb
@@ -803,6 +854,7 @@ __sfx__
 011800000c0100c0200c0300c0400c0400c0300c0200c0100c0100c0200c0300c0400c0300c0200c0100c0100c0100c0200c0300c0300c0200c0100c0100c0100c0100c0200c0300c0400c0500c0400c0300c020
 0110000000000000000000000000000001a0101a0501a010000000000021010210502101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0101000017030170300b03002030020300203031000160002300022000210001f0001e0001b000170001600000000000000000000000000000000000000000000000000000000000000000000000000000000000
+010100001773017731171311a1311a0311a0310e03002030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __music__
 03 02034344
 
