@@ -7,16 +7,13 @@ text_speed_internal = text_speed * 1.5
 global_state = nil
 dialogue_y = 6
 
-enable_sfx = true
-enable_music = true
-
 action_pressed_last_frame = false
 
 function _init()
   cls(0)
   --global_state = init_intro()
   global_state = init_dead()
-  global_state = init_talking()
+  --global_state = init_talking()
 end
 
 function _update60()
@@ -56,6 +53,7 @@ function init_dead()
     dialogue = {},
 
     objects = {},
+    drawables = {},
 
     phase_text_y = 0,
     phase_col = 0,
@@ -66,6 +64,8 @@ function init_dead()
     smelled_serious = 0,
     smelled_funny = 0,
   }
+
+  add(state.drawables, state.player)
 
   music(0)
 
@@ -83,29 +83,50 @@ function init_dead()
   add(state.dialogue, "            stop           ")
   add(state.dialogue, "light the candles darling")
 
+  local add_talker = function(s, x, y, text, funny)
+    local obj = {
+      s = s,
+      x = x,
+      y = y,
+      text = text,
+      funny = funny,
+      draw = function(o, state)
+        palt(11, true)
+        palt(0, false)
+        spr(o.s, o.x - 4, o.y - 4)
+        palt()
+      end
+    }
+
+    add(state.objects, obj)
+    add(state.drawables, obj)
+  end
+
   -- you cant remember this one
-  add(state.objects, {spr = 16, x = 100, y = 32, text = {"you are reminded of", "something deep inside you"} })
-  add(state.objects, {spr = 16, x = 46, y = 26, text = {"the scent of roses fills you"} })
-  add(state.objects, {spr = 16, x = 40, y = 48, text = {"the scent brings a","great melencholy"} })
+  --add_talker(16, 100, 32)
+  add_talker(16, 100, 32, {"you are reminded of", "something deep inside you"})
+  add_talker(16, 46, 26, {"the scent of roses fills you"})
+  add_talker(16, 40, 48, {"the scent brings a","great melencholy"})
 
-  add(state.objects, {spr = 16, x = 12, y = 59, text = {"wow a cool plant"}, funny = true })
-  add(state.objects, {spr = 16, x = 40, y = 80, text = {"what is worse,", "the pain of the remembering,", " or the pain of the smelling?", text_pause = 10}, funny = true})
-  add(state.objects, {spr = 16, x = 70, y = 52, text = {"you are transported back home,", "your mother smiles", text_pause = 12 }})
-  add(state.objects, {spr = 16, x = 98, y = 89, text = {"actually you dont really like", "this one" }, funny = true})
-  --add(state.objects, {spr = 16, x = 10, y = 82, text = {"your nose births the", "disappointment anew" }})
-  --add(state.objects, {spr = 16, x = 40, y = 80, text = "the pain of remembering fills you, is this the most pain?" })
-  --add(state.objects, {spr = 16, x = 60, y = 62, text = "your mother is laughing, these flowers in her hair" })
-  --add(state.objects, {spr = 16, x = 60, y = 102, text = "memory waters the plant with attention" })
+  add_talker(16, 12, 59, {"wow a cool plant"}, true)
+  add_talker(16, 40, 80, {"what is worse,", "the pain of the remembering,", " or the pain of the smelling?", text_pause = 10}, true)
+  add_talker(16, 70, 52, {"you are transported back home,", "your mother smiles", text_pause = 12 })
+  add_talker(16, 98, 89, {"actually you dont really like", "this one" }, true)
+  add_talker(19, 90, 10, {"saint waningus\'", "garden of smells"})
 
-  --add(state.objects, {spr = 16, x = 100, y = 32, text = "you reminise" })
-  add(state.objects, {spr = 19, x = 90, y = 10, text = {"saint waningus\'", "garden of smells"}})
+  add_talker(20, 23, 100, {"an oil painting in front", "of you, it is ugly and ", "shouldn't be here", text_pause = 2}, true)
+  add_talker(25, 76, 115, {"the smell of burning wax", "evokes...", "evokes...", text_pause = 12})
 
-  add(state.objects, {spr = 20, x = 23, y = 100, text = {"an oil painting in front", "of you, it is ugly and ", "shouldn't be here", text_pause = 2}, funny = true})
-  add(state.objects, {spr = 25, x = 76, y = 115, text = {"the smell of burning wax", "evokes...", "evokes...", text_pause = 12}})
+  add_talker(28, 67, 78, {"\"my soul is a vessel,", "and my nose the steam paddle\"", text_pause = 10}, true)
 
-  add(state.objects, {spr = 28, x = 67, y = 78, text = {"\"my soul is a vessel,", "and my nose the steam paddle\"", text_pause = 10}, funny = true })
-  --add(state.objects, {spr = 28, x = 84, y = 82, text = {"ah i could smell you coming", "i was reminded of my dog", text_pause = 12} })
-  --add(state.objects, {spr = 28, x = 84, y = 82, text = {"i prefer the feeling den", "i was reminded of my dog", text_pause = 12} })
+  --add(state.objects, {16, x = 10, y = 82, text = {"your nose births the", "disappointment anew" }})
+  --add(state.objects, {16, x = 40, y = 80, text = "the pain of remembering fills you, is this the most pain?" })
+  --add(state.objects, {16, x = 60, y = 62, text = "your mother is laughing, these flowers in her hair" })
+  --add(state.objects, {16, x = 60, y = 102, text = "memory waters the plant with attention" })
+
+  --add(state.objects, {16, x = 100, y = 32, text = "you reminise" })
+  --add(state.objects, {28, x = 84, y = 82, text = {"ah i could smell you coming", "i was reminded of my dog", text_pause = 12} })
+  --add(state.objects, {28, x = 84, y = 82, text = {"i prefer the feeling den", "i was reminded of my dog", text_pause = 12} })
 
   return state
 end
@@ -181,7 +202,7 @@ function make_dead_player(x, y)
     end,
     draw = function(p, state)
       --rectfill(p.x, p.y, p.x+3, p.y+3, 7)
-      circfill(p.x, p.y, 1 + rnd(state.dialogue_state * 2), 0)
+      circfill(p.x, p.y, rnd(state.dialogue_state * 2), 0)
       --if state.dialogue_state > 4 then
         --circfill(p.x, p.y, 3 + rnd(8), 7)
       --end
@@ -272,12 +293,11 @@ function draw_dead(state)
   rectfill(0, 0, 128, 128, state.phase_col)
   fillp()
 
-  palt(11, true)
-  palt(0, false)
-  for i, o in pairs(state.objects) do
-    spr(o.spr, o.x - 4, o.y - 4)
+  insertion_sort(state.drawables, function(list, i) return list[i].y end)
+
+  for i,o in pairs(state.drawables) do
+    o.draw(o, state)
   end
-  palt()
 
   if state.interupt_text != nil then
     local yy = state.phase_text_y
@@ -303,8 +323,6 @@ function draw_dead(state)
       end
     end
   end
-
-  state.player.draw(state.player, state)
 end
 
 ------
@@ -771,17 +789,19 @@ function lerp(x, y, scale)
   return (x * (scale-1) + y) / scale
 end
 
---function d_sfx(x)
---  if enable_sfx then
---    sfx(x)
---  end
---end
---
---function d_music(x)
---  if enable_music then
---    music(x)
---  end
---end
+function insertion_sort(list, f)
+  local i = 2
+  while i <= #list do
+    local j = i
+    while j > 1 and f(list, j-1) > f(list, j) do 
+      local tmp = list[j]
+      list[j] = list[j-1]
+      list[j-1] = tmp
+      j -= 1
+    end
+    i += 1
+  end
+end
 
 __gfx__
 00000000bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb8bbbbbb8bbbbbbbb8bbbbbbbbbbbbbbb8bbbbbbbb8bbbbbb8bbb
