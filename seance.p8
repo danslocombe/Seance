@@ -2,6 +2,15 @@ pico-8 cartridge // http://www.pico-8.com
 version 18
 __lua__
 
+-- ideas
+--
+-- puzzle where there are regions on the ground constantly drawn over
+-- so use trail like pastel rubbing 
+--
+--
+-- badly thrown pot
+
+
 text_speed = 0.35
 text_speed_internal = text_speed * 1.5
 global_state = nil
@@ -13,12 +22,18 @@ function _init()
   cls(0)
   --global_state = init_intro()
   global_state = init_dead()
+  init_house(global_state)
+
+  music(2, 8000)
   --global_state = init_talking()
 end
 
 function _update60()
   if global_state != nil then
-    global_state.updatefn(global_state)
+    local s = global_state.updatefn(global_state)
+    if s != nil then
+      global_state = s
+    end
   end
 
   action_pressed_last_frame = btn(4)
@@ -69,27 +84,46 @@ function init_dead()
 
     smelled_serious = 0,
     smelled_funny = 0,
+
+    goto_next = nil,
   }
 
   add(state.drawables, state.player)
 
-  music(2, 8000)
-
   --init_rose_garden(state)
-  init_house(state)
+  --init_house(state)
 
   return state
+end
+
+add_tree = function(state, x, y, h, flip)
+  local tree = {
+    x = x,
+    y = y,
+    draw = function(o, state)
+      palt(11, true)
+      palt(0, false)
+      -- draw so door is at (house_x, house_y)
+      sspr(15*8, 8, 8, 8*h, o.x, o.y - 8*h, 8, 8*h, flip)
+      palt()
+    end,
+  }
+  add(state.drawables, tree)
 end
 
 function init_house(state)
   add(state.dialogue, ".")
   add(state.dialogue, ".")
 
+  state.min_x = 20
+  state.max_x = 108
+  state.min_y = 30
 
   local house_x = 54
-  local house_y = 24
+  local house_y = 44
 
-  state.player.y = house_y + 52
+  state.player.x = house_x + 4
+  state.player.y = house_y + 8
 
   local house = {
     x = house_x,
@@ -103,6 +137,11 @@ function init_house(state)
     end,
     text = {"home"}
   }
+
+  add_tree(state, 39, 84, 2)
+  add_tree(state, 45, 104, 3, true)
+  add_tree(state, 70, 84, 3)
+  add_tree(state, 75, 16, 1)
 
   add(state.objects, house)
   add(state.drawables, house)
@@ -142,10 +181,53 @@ function init_house(state)
     add(state.cols, scol)
   end
 
-  add_sign(10, 50, {"saint waningus\'", "garden of smells"})
+  state.goto_next = {
+    test = function(state)
+      return state.player.y > 118
+    end,
+    init = function()
+      -- transition
+      local s = init_dead()
+      init_house_walk(s)
+      return make_noise_transition(s)
+    end,
+  }
+  --add_sign(10, 50, {"saint waningus\'", "garden of smells"})
+end
+
+function init_house_walk(state)
+  add(state.dialogue, ".")
+  add(state.dialogue, ".")
+
+  state.player.y = 0
+
+  state.min_x = 20
+  state.max_x = 108
+  state.min_y = -5
+
+  add_tree(state, 39, 84, 2)
+  add_tree(state, 45, 104, 3, true)
+  add_tree(state, 70, 84, 3)
+  add_tree(state, 75, 16, 1)
+
+  state.goto_next = {
+    test = function(state)
+      return state.player.y > 118
+    end,
+    init = function()
+      -- transition
+      local s = init_dead()
+      init_rose_garden(s)
+      return make_noise_transition(s)
+    end,
+  }
+
+  --add_sign(10, 50, {"saint waningus\'", "garden of smells"})
 end
 
 function init_rose_garden(state)
+  cls(0)
+  --dump_noise(0.2)
   add(state.dialogue, "i beckon thee ........")
   add(state.dialogue, "feel .... ... ...  to the")
   add(state.dialogue, "vibrations ................")
@@ -217,7 +299,7 @@ function make_player(x, y)
     footstep_t = 0,
     -- update_player
     update = function(p, state)
-      local spd = 0.85
+      local spd = 0.45
       local t_xvel = 0
       local t_yvel = 0
       if btn(0) then
@@ -242,8 +324,8 @@ function make_player(x, y)
         t_yvel = spd * sin(a)
       end
 
-      local k = 12
-      local k_stop = 5
+      local k = 8
+      local k_stop = 2
       local xk = k
       local yk = k
       if t_xvel == 0 then
@@ -415,7 +497,7 @@ function update_dead(state)
     (state.dialogue_state == #state.dialogue - 1 and abs(state.phase_text_y - dialogue_y) < 1)
     or state.dialogue_state >= #state.dialogue
   if is_end then
-    global_state = init_talking()
+    return init_talking()
 
     --state.phase_text_y = dialogue_y
     --speed = 0
@@ -425,6 +507,10 @@ function update_dead(state)
   state.face_scale = 0
   state.phase_col += 0.4 * speed
   state.phase_bg_bits += 0.3 * speed
+
+  if state.goto_next != nil and state.goto_next.test(state) then
+    return state.goto_next.init()
+  end
 end
 
 function draw_dead(state)
@@ -510,15 +596,6 @@ function update_talking(state)
   if state.s == 0 then
     if state.state_init then
       state.dialogue = {}
-      --add(state.dialogue, "i beckon thee ........")
-      --add(state.dialogue, "feel .... ... ...  to the")
-      --add(state.dialogue, "vibrations ................")
-      --add(state.dialogue, "....... fetch the .... ....")
-      --add(state.dialogue, "i sense a presence amongst us")
-      --add(state.dialogue, "i sense a presence amongst us")
-      --add(state.dialogue, "come close everyone we can ...")
-      --add(state.dialogue, "susan please stop")
-      --add(state.dialogue, "class this is serious please")
       add(state.dialogue, "           stop            ")
       add(state.dialogue, "light the candles darling")
       state.draw_face = true
@@ -765,8 +842,8 @@ function update_intro(state)
   end
 
   if state.s >= 3 then
-    global_state = init_talking()
     cls(0)
+    return init_talking()
   end
 end
 
@@ -958,6 +1035,24 @@ function col(obj1, obj2)
     (obj1.y < obj2.y + obj2.h)
 end
 
+function make_noise_transition(target_state)
+  --cls(7)
+  sfx(8)
+  return {
+    t = 0,
+    updatefn = function(s)
+      if s.t > 4 then
+        cls(0)
+        return target_state
+      end
+      s.t+=1
+    end,
+    drawfn = function(s)
+      dump_noise(0.25)
+    end,
+  }
+end
+
 __gfx__
 00000000bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 00000000bb7777bbbbbbbbbbbbbbbbbbbbbbbbbbbb1111bbbb9999bbbb4444bbbbbbb8bbbbbb8bbbbbb8bbbbbbbb8bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
@@ -967,30 +1062,30 @@ __gfx__
 00700700bb4444bb444444444444444444444444bbddddbbbb2222bbbb6666bbbbbb7bbbbbbb7bbbbbbb7bbbbbbb7bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 00000000bb44444b444444444444444444444444bd44ddbbbbf22fbbbbfeefbbbbbb6bbbbbbb6bbbbbbb6bbbbbbb6bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 00000000bb44444bb4bbbbbbbbbbbbbbbbbbbb4bbdddddbbbbddddbbbbeeeebbbbbb6bbbbbbb6bbbbbbb6bbbbbbb6bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-bbbbbbbbbb7777bbbbbbbbbb44444444bbbbbbbbbb1111bbbb9999bbbb4444bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb7777bbbb7777bbbbbbbbbb
-bbbb8bbb777fffbbb444444b4ffffff4b444444bbbe1e11bb999999bbb4444bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb7777bbbb0707bbbb0707bbbbbbbbbb
-bbb888bb777fffbbb411714b4ffffff4b411a14bbb4441ebb99ff99bbbbffbbbb222222bbbbbbbbbbbbbbbbbbbbbbbbbbb0707bbb777777bb777777bbbbbbbbb
-bbb888bb7b7fffbbb417f14b4ffffff4b41afa4bbb444eebbb9ff9bbbb6666bbb2dddd2bbbbbbbbbbbbbbbbbbbbbbbbbbb7777bbbb7777bbbb7777bbbbbbbbbb
-bbb3bbbbbb4444bbb432234b44444444b4adda4bbbddddbbbb2222bbbb6666bbb2dddd2bbbbbbbbbbbbbbbbbb222bbbbb777777bbb7bb7bbbb7bb7bbbbbbbbbb
-bbbb3bbbbb4444bbb433224bbb4bb4bbb4dd334bbbd4ddbbbb2222bbbbf66fbbb222222bbbbbbbbbbbbbbbbbb2b2bbbbbb7bb7bbbb7bbbbbbbbbb7bbbbbbbbbb
-bbbb3bbbbb44444bb444444bbb4bb4bbb444444bbd4dddbbbbfddfbbbbfeefbbbb2bb2bbbbbbbbbbbbbbbbbbb222bbbbbb7bb7bbbb7bbbbbbbbbb7bbbbbbbbbb
-bbbb3bbbbb44444bbbbbbbbbbb4bb4bbbbbbbbbbbddddbbbbbddddbbbbeeeebbbb2bb2bb222222222222222222222222bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-bbbbbbbbbbbbbbbb555555550000000000000000bbb000bbbbbbbbbbbbbbbbbbbbbbbbbb222222222222222222222b22bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-d4d4d444444d4d4dbbbb5bbb0000000000000000bb0040bbbbbbbbbbbbbbbbbbbbbb8bbb22222222222222222222bbb2bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-dddddbbbbbbdddddbbbb5bbb0000000000000000bbb44bbbbbbbbbbbbbbbbbbbbbb888bb22bbbbbbbbbbbbbbbbbbbbb2bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-dddddbbbbbbddddd555555550000000000000000bb3333bbbbbbbbbbbbbbbbbbbbb888bb22bbbbbbbbbbbbbbbbbbbbb2bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-ddddbbbbbbbbddddb5bbbbbb0000000000000000bb3333bbbbbbbbbbbbbbbbbbbbb3bbbb22222222bbbbbbbb2b22b222bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-dbdbbbbbbbbbbdddb5bbbbbb0000000000000000bb4333bbbbbbbbbbbbbbbbbbbbbb3bbb222222222222222222222222bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-dddbbbbbbbbbbdddbbbbbbbb0000000000000000bb4555bbbbbbbbbbbbbbbbbbbbbb3bbb22bbbbbbbbbbbbbbbbbbbb22bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-dddbbbbbbbbbbdddbbbbbbbb0000000000000000bb5555bbbbbbbbbbbbbbbbbbbbbb3bbb22b222222bbbbbbbbbbbbb22bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-dddbbbbbbbbbbddd000000000000000000000000bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb22b2bbb22b22222bbbbbbb22bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-dddbbbbbbbbbbddd000000000000000000000000bbb000bbbbbbbbbbbbbbbbbbbbbbbbbb22b22bb22b2bbb2bbbbbbb22bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-dddbbbbbbbbbbddd000000000000000000000000bb0040bbbbbbbbbbbbbbbbbbbbbbbbbb22b22bbb2b2bbb2bbbbbbb22bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-bddbbbbbbbbbbddd000000000000000000000000bbb44bbbbbbbbbbbbbbbbbbbbbbbbbbb22b22222222bbb2bbbbbbb22bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-dddbbbbbbbbbbddd000000000000000000000000bb3333bbbbbbbbbbbbbbbbbbbbbbbbbb22bbbbbbbb2bbb2b22bb2222bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-ddd4444444444d4d000000000000000000000000bb3333bbbbbbbbbbbbbbbbbbbbbbbbbb2222b2222222222222222222bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-ddd4444444444ddd000000000000000000000000bb4555bbbbbbbbbbbbbbbbbbbbbbbbbbb2b222bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-dddbbbbbbbbbbddd000000000000000000000000bb5555bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbbbbbb7777bbbbbbbbbb44444444bbbbbbbbbb1111bbbb9999bbbb4444bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb7777bbbb7777bbbbbb22bb
+bbbb8bbb777fffbbb444444b4ffffff4b444444bbbe1e11bb999999bbb4444bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb7777bbbb0707bbbb0707bbbbbb2bbb
+bbb888bb777fffbbb411714b4ffffff4b411a14bbb4441ebb99ff99bbbbffbbbb222222bbbbbbbbbbbbbbbbbbbbbbbbbbb0707bbb777777bb777777bbbb22bbb
+bbb888bb7b7fffbbb417f14b4ffffff4b41afa4bbb444eebbb9ff9bbbb6666bbb2dddd2bbbbbbbbbbbbbbbbbbbbbbbbbbb7777bbbb7777bbbb7777bbbbbb2bbb
+bbb3bbbbbb4444bbb432234b44444444b4adda4bbbddddbbbb2222bbbb6666bbb2dddd2bbbbbbbbbbbbbbbbbb222bbbbb777777bbb7bb7bbbb7bb7bbbbb2222b
+bbbb3bbbbb4444bbb433224bbb4bb4bbb4dd334bbbd4ddbbbb2222bbbbf66fbbb222222bbbbbbbbbbbbbbbbbb2b2bbbbbb7bb7bbbb7bbbbbbbbbb7bbbbbb2bbb
+bbbb3bbbbb44444bb444444bbb4bb4bbb444444bbd4dddbbbbfddfbbbbfeefbbbb2bb2bbbbbbbbbbbbbbbbbbb222bbbbbb7bb7bbbb7bbbbbbbbbb7bbbbbb2bbb
+bbbb3bbbbb44444bbbbbbbbbbb4bb4bbbbbbbbbbbddddbbbbbddddbbbbeeeebbbb2bb2bb222222222222222222222222bbbbbbbbbbbbbbbbbbbbbbbbbb222bbb
+bbbbbbbbbbbbbbbb555555550000000000000000bbb000bbbbbbbbbbbbbbbbbbbbbbbbbb222222222222222222222b22bbbb2bbbbbbbbbbbbbbbbbbbbbbb22bb
+d4d4d444444d4d4dbbbb5bbb0000000000000000bb0040bbbbbbbbbbbbbbbbbbbbbb8bbb22222222222222222222bbb2bbbb2bbbbbbbbbbbbbbbbbbbbbbb222b
+dddddbbbbbbdddddbbbb5bbb0000000000000000bbb44bbbbbbbbbbbbbbbbbbbbbb888bb22bbbbbbbbbbbbbbbbbbbbb2bbbb2bbbbbbbbbbbbbbbbbbbbbbb2bbb
+dddddbbbbbbddddd555555550000000000000000bb3333bbbbbbbbbbbbbbbbbbbbb888bb22bbbbbbbbbbbbbbbbbbbbb2bbbb2bbbbbbbbbbbbbbbbbbbbb22222b
+ddddbbbbbbbbddddb5bbbbbb0000000000000000bb3333bbbbbbbbbbbbbbbbbbbbb3bbbb22222222bbbbbbbb2b22b222bbbb2bbbbbbbbbbbbbbbbbbbbbbb2bbb
+dbdbbbbbbbbbbdddb5bbbbbb0000000000000000bb4333bbbbbbbbbbbbbbbbbbbbbb3bbb222222222222222222222222bbbb2bbbbbbbbbbbbbbbbbbbbbbb2bbb
+dddbbbbbbbbbbdddbbbbbbbb0000000000000000bb4555bbbbbbbbbbbbbbbbbbbbbb3bbb22bbbbbbbbbbbbbbbbbbbb22bbbb2bbbbbbbbbbbbbbbbbbbbbbb2bbb
+dddbbbbbbbbbbdddbbbbbbbb0000000000000000bb5555bbbbbbbbbbbbbbbbbbbbbb3bbb22b222222bbbbbbbbbbbbb22bbbb2bbbbbbbbbbbbbbbbbbbbb222bbb
+dddbbbbbbbbbbddd000000000000000000000000bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb22b2bbb22b22222bbbbbbb22bbbbbbbbbbbbbbbbbbbbbbbbbbbb222b
+dddbbbbbbbbbbddd000000000000000000000000bbb000bbbbbbbbbbbbbbbbbbbbbbbbbb22b22bb22b2bbb2bbbbbbb22bbbbbbbbbbbbbbbbbbbbbbbbbbbb2bbb
+dddbbbbbbbbbbddd000000000000000000000000bb0040bbbbbbbbbbbbbbbbbbbbbbbbbb22b22bbb2b2bbb2bbbbbbb22bbbbbbbbbbbbbbbbbbbbbbbbbb222bbb
+bddbbbbbbbbbbddd000000000000000000000000bbb44bbbbbbbbbbbbbbbbbbbbbbbbbbb22b22222222bbb2bbbbbbb22bbbbbbbbbbbbbbbbbbbbbbbbbbb2222b
+dddbbbbbbbbbbddd000000000000000000000000bb3333bbbbbbbbbbbbbbbbbbbbbbbbbb22bbbbbbbb2bbb2b22bb2222bbbbbbbbbbbbbbbbbbbbbbbbbbbb2bbb
+ddd4444444444d4d000000000000000000000000bb3333bbbbbbbbbbbbbbbbbbbbbbbbbb2222b2222222222222222222bbbbbbbbbbbbbbbbbbbbbbbb22222bbb
+ddd4444444444ddd000000000000000000000000bb4555bbbbbbbbbbbbbbbbbbbbbbbbbbb2b222bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb22222
+dddbbbbbbbbbbddd000000000000000000000000bb5555bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb2bbb
 bbbbb77777777777777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 bbbb7777777777777777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 bbb777770000077777777777bbbbbbbbbbbbbbbbbbbbbbbbbbb111111bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
@@ -1162,7 +1257,7 @@ __sfx__
 010100001773017731171311a1311a0311a0310e03002030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 011a0000021511a0111a05126111321113e71102221023311a0211a0211a0211a0211a0211a0211a0241a02421011210512d11139111217110922109321090311d0201d0211d0211c0211c0211c0211c0211c021
 011800000e2101a2101a11026214263101a51026114261110e2101a2101a110262141a3101a51026114261112121021210211102d21421310215102d1142d1111c2101c2101c110282141c3101c5102811428111
-011000000061102611046210562107621056210462102621006210262104621056210762104621026210062100621026210462105621046210262100621026210e6210c621026210462104621056210462102621
+01020000186111a621346211d631376411d6411c6413263118621326211c621296211f621346211a6213c6211862132611346111d611286111a61124611326112661118611326111c61134611356112861132611
 011500000504005040050400504005040050400504005040050400504005040050400504005040050400504005040050400504005040050400504005040050400504005040050400504005040050400504005040
 011500000204002040020400204002040020400204002040020400204002040020400204002040020400204004040040400404004040040400404004040040400404004040040400404004040040400404004040
 01150000117541175015754157501c7541c7521575415750117541175015754157501c7541c7501573415750177541775018754187501f7541f7521875418750177541775018754187501d7541d7501875418750
