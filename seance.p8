@@ -7,8 +7,22 @@ __lua__
 -- puzzle where there are regions on the ground constantly drawn over
 -- so use trail like pastel rubbing 
 --
+-- seancer trying to swindle daughter out of money
+-- who is trying to find where money buried
+-- but SPECIFICALLY do you find the room enriching?
 --
 -- badly thrown pot
+-- the viper character
+-- snoring snoring two in the morning
+--
+-- crime never pays
+--
+
+-- Go to sleep
+-- walk to hub
+-- each hub character says different things
+-- go to thing
+-- get woken up
 
 
 text_speed = 0.35
@@ -20,11 +34,14 @@ action_pressed_last_frame = false
 
 function _init()
   cls(0)
-  --global_state = init_intro()
+
+  music(2, 8000)
+
   global_state = init_dead()
   init_house(global_state)
 
-  music(2, 8000)
+  --init_crossroads(global_state)
+  --global_state = init_intro()
   --global_state = init_talking()
 end
 
@@ -96,19 +113,72 @@ function init_dead()
   return state
 end
 
+add_bird = function(state, x, y, xvel, yvel, flip)
+  local bird = {
+    x = x,
+    y = y,
+    nesting = true,
+    nt = 0,
+    update = function(o, state)
+      if o.nesting then
+        local d2 = sqr(o.x - state.player.x) + sqr(o.y - state.player.y)
+        if d2 < 80 then
+          o.nesting = false
+          sfx(8)
+        end
+      else
+        o.nt += 1
+        o.x -= xvel * (1 + 0.05* o.nt)
+        o.y -= yvel * (1 + 0.05 * o.nt)
+      end
+    end,
+    draw = function(o, state)
+      local s = 12
+      if (not o.nesting) then
+        if state.t % 24 < 16 then
+          s = 46
+        else
+          s = 45
+        end 
+      end
+      
+      palt(11, true)
+      palt(0, false)
+
+      spr(s, o.x, o.y, 1, 1, flip)
+
+      palt()
+    end,
+  }
+
+  add(state.objects, bird)
+  add(state.drawables, bird)
+end
+
 add_tree = function(state, x, y, h, flip)
   local tree = {
     x = x,
     y = y,
+    t0 = rnd(100),
+    k = 400+rnd(800),
     draw = function(o, state)
       palt(11, true)
       palt(0, false)
       -- draw so door is at (house_x, house_y)
-      sspr(15*8, 8, 8, 8*h, o.x, o.y - 8*h, 8, 8*h, flip)
+      for i = 0,h do
+        local xoff = i*sin((o.t0 + state.t) / o.k)
+        sspr(15*8, 8+(h-i)*8, 8, 8, o.x + xoff, o.y - 8*i, 8, 8, flip)
+      end
+      --sspr(15*8, 8, 8, 8*h, o.x, o.y - 8*h, 8, 8*h, flip)
       palt()
     end,
   }
   add(state.drawables, tree)
+end
+
+function init_bedroom(state)
+  add(state.dialogue, ".")
+  add(state.dialogue, ".")
 end
 
 function init_house(state)
@@ -143,6 +213,8 @@ function init_house(state)
   add_tree(state, 70, 84, 3)
   add_tree(state, 75, 16, 1)
 
+  --add_bird(state, 69, 67)
+
   add(state.objects, house)
   add(state.drawables, house)
 
@@ -155,34 +227,9 @@ function init_house(state)
 
   add(state.cols, house_col)
 
-  local add_sign = function(x, y, text)
-    local s = {
-      s = 24,
-      x = x,
-      y = y,
-      text = text,
-      draw = function(o, state)
-        palt(11, true)
-        palt(0, false)
-        spr(o.s, o.x - 4, o.y - 4)
-        palt()
-      end,
-    }
-
-    local scol = {
-      x = x-2,
-      y = y-2,
-      w = 4,
-      h = 4,
-    }
-
-    add(state.objects, s)
-    add(state.drawables, s)
-    add(state.cols, scol)
-  end
-
   state.goto_next = {
     test = function(state)
+      --return true
       return state.player.y > 118
     end,
     init = function()
@@ -201,18 +248,213 @@ function init_house_walk(state)
 
   state.player.y = 0
 
-  state.min_x = 20
-  state.max_x = 108
+  state.min_x = 30
+  state.max_x = 128
   state.min_y = -5
+  state.max_y = 100
 
-  add_tree(state, 39, 84, 2)
-  add_tree(state, 45, 104, 3, true)
-  add_tree(state, 70, 84, 3)
-  add_tree(state, 75, 16, 1)
+  add_bird(state, 74, 32, -0.9, -0.152, true)
+  add_bird(state, 75, 33, 0.2, -0.9)
+  add_bird(state, 76, 31, 0.6, 0.3)
+
+  add_tree(state, 39, 30, 3)
+  add_tree(state, 74, 44, 2)
+
+  add_tree(state, 110, 84, 1)
+
+  add_tree(state, 39, 84, 3)
+  add_tree(state, 24, 40, 2)
+  add_tree(state, 34, 54, 2, true)
+  add_tree(state, 70, 114, 3, true)
+  add_tree(state, 25, 110, 2)
+  add_tree(state, 63, 90, 3)
+  add_tree(state, 23, 82, 3, true)
+  add_tree(state, 42, 100, 3)
+  add_tree(state, 53, 118, 3, true)
+  add_tree(state, 13, 110, 3)
 
   state.goto_next = {
     test = function(state)
-      return state.player.y > 118
+      return state.player.y > 64 and state.player.x > 120
+    end,
+    init = function()
+      -- transition
+      local s = init_dead()
+      init_mountain(s)
+      return make_noise_transition(s)
+      --return make_noise_transition(s, 7)
+    end,
+  }
+
+  --add_sign(10, 50, {"saint waningus\'", "garden of smells"})
+end
+
+function init_mountain(state)
+  add(state.dialogue, ".")
+  add(state.dialogue, ".")
+
+  state.player.x = 0
+  state.player.y = 80
+
+  state.min_x = -5
+  state.max_x = 129
+  state.min_y = 40
+  state.max_y = 100
+
+  state.goto_next = {
+    test = function(state)
+      return state.player.x > 128
+    end,
+    init = function()
+      -- transition
+      local s = init_dead()
+      init_crossroads(s)
+      return make_noise_transition(s)
+    end,
+  }
+
+  local make_wind = function(s)
+    local col = 1
+    if (rnd(2) < 1) then
+      --col = 7
+      col = 2
+    end
+    local w = {
+      x = 130,
+      y = rnd(128),
+      --col = 1 + flr(rnd(2)),
+      col = col,
+      draw = function(o, s)
+        o.x -= 10
+        if (o.x < -10) then
+          del(s.drawables, o)
+          --o.x = 64
+        end
+
+        rectfill(o.x, o.y, o.x + 40, o.y + 1, o.col)
+      end,
+    }
+
+    return w
+  end
+
+  state.cur_wind_sfx = nil
+  state.custom_update = function(s)
+    local cur_wind_sfx = nil
+    for i = 16,19 do
+      if stat(i) == 18 then
+        cur_wind_sfx = i
+      end
+    end
+
+    if cur_wind_sfx == nil then
+      -- play on same channel as music bass
+      sfx(18, 0)
+    end
+
+    if (rnd(100) < 15) then
+      add(state.drawables, make_wind(state))
+    end
+
+    -- puzzle!
+    -- have to walk behind alpacca
+
+    if state.player.x < 120 then
+      local xvel = 0.195
+      if state.player.x > 64 then
+        xvel += 0.6 * (state.player.x - 64) / 128
+      end
+      if (abs(state.player.y - state.alpaca.y) < 5) then
+        xvel -= 0.19
+      end
+      state.player.x -= xvel
+      --state.player.x -= 0.195
+    end
+  end
+
+
+  state.alpaca = {
+    x = 52,
+    y = 52,
+    x_move = 0,
+    y_move = 0,
+    spr_y_off = 0,
+    feeding = false,
+    xflip = false,
+    text = {"hmmmmmmmmmmmmmmmmmmm", "SCREACHHHHH", text_pause = 24, d2 = 90},
+    update = function(o, state)
+      local d2 = sqr(o.x - state.player.x) + sqr(o.y - state.player.y)
+      if o.x_move == 0 and d2 < 80 then
+        o.feeding = false
+        o.x_move = 0.2
+        o.y_move = 0.12
+        if o.x - state.player.x < 0 then 
+          o.x_move *= -1
+        end
+        if o.y - state.player.y < 0 then 
+          o.y_move *= -1
+        end
+      elseif rnd(100) < 2.55 then
+        o.x_move = 0
+        o.y_move = 0
+      end
+
+      if o.x_move == 0 then
+        if o.feeding and rnd(100) < 1 then
+          o.feeding = false
+        elseif rnd(100) < 0.5 then
+          o.feeding = true
+        end
+      end
+
+      o.spr_y_off = 0
+      if (o.x_move != 0) then
+        if (o.x_move > 0) then
+          o.xflip = true
+        else
+          o.xflip = false
+        end
+        o.spr_y_off = 2 + flr((state.t / 20) % 2)
+
+      elseif o.feeding then
+        o.spr_y_off = 1
+      end
+
+      o.x += o.x_move
+      o.y += o.y_move
+
+      o.x = min(126, max(state.min_x, o.x))
+      o.y = min(state.max_y, max(state.min_y, o.y))
+    end,
+    draw = function(o, state)
+      palt(11, true)
+      palt(0, false)
+      sspr(10*8, 4*8 + o.spr_y_off*8, 2*8, 8, o.x - 6, o.y - 4, 16, 8,  o.xflip)
+      palt()
+    end,
+  }
+
+  add(state.objects, state.alpaca)
+  add(state.drawables, state.alpaca)
+
+  --add_sign(10, 50, {"saint waningus\'", "garden of smells"})
+end
+
+function init_crossroads(state)
+  add(state.dialogue, ".")
+  add(state.dialogue, ".")
+
+  music(-1)
+  music(0, 4000)
+
+  state.player.y = 4
+
+  local next_buf = 10
+  state.goto_next = {
+    test = function(state)
+      local y = state.player.y
+      local x = state.player.x
+      return y > 128 - next_buf or x < next_buf or x > 128 - next_buf
     end,
     init = function()
       -- transition
@@ -222,7 +464,89 @@ function init_house_walk(state)
     end,
   }
 
-  --add_sign(10, 50, {"saint waningus\'", "garden of smells"})
+  local bgdraw = {
+    y = 0,
+    draw = function(o, state)
+      --cls(0)
+      local col = 1 + flr(state.t / 64) % 2
+      col = 1
+      circfill(64, 64, 46, 2)
+      local pat = fill_bits(flr(8*(1 + sin(state.t / 400))))
+      fillp(pat)
+      circfill(64, 64, 50, col)
+      fillp()
+      --dump_noise(0.04)
+    end,
+  }
+
+  add(state.drawables, bgdraw)
+
+  local add_obj = function(sprite, x, y, text, update)
+    local s = {
+      s = sprite,
+      x = x,
+      y = y,
+      xflip = false,
+      text = text,
+      draw = function(o, state)
+        palt(11, true)
+        palt(0, false)
+        spr(o.s, o.x - 4, o.y - 4, 1, 1, o.xflip)
+        palt()
+      end,
+      update = update,
+    }
+
+    local scol = {
+      x = x-2,
+      y = y-2,
+      w = 4,
+      h = 4,
+    }
+
+    add(state.objects, s)
+    add(state.drawables, s)
+    add(state.cols, scol)
+  end
+
+  -- sign
+  add_obj(24, 8, 60, {"saint waningus\'", "garden of smells"})
+  add_obj(24, 120, 60, {"saint david\'s", "conservatory of sounds"})
+  add_obj(24, 60, 120, {"saint marks\'s", "shed of sights"})
+  add_obj(12, 40, 40, {"quack"})
+-- 
+  add_obj(28, 44, 80, {"what is a coralrrafk?", "wait it costs HOW much?"}, function(o, state)
+    --o.s = 28 + flr((state.t / 2) % 2)
+    local k = 32
+    if (state.t / k) % 1 < 0.5 then
+      o.text[2] = "wait it costs HOW much?"
+      --o.s = 29
+    else
+      o.text[2] = "wait it costs how much?"
+      o.s = 28
+    end
+    o.xflip = ((state.t / k) % 2 < 1)
+  end)
+  add_obj(28, 78, 40, {"this crime is piping hot"}, function(o, state)
+    --o.s = 28 + flr((state.t / 2) % 2)
+    local k = 256
+    if (state.t + 200 / k) % 1 < 0.02 then
+      --o.s = 29
+    else
+      o.s = 28
+    end
+    o.xflip = ((state.t / k) % 2 < 1)
+  end)
+  add_obj(28, 74, 80, {"snoring", "snoring", "two in the morning"}, function(o, state)
+    --o.s = 28 + flr((state.t / 2) % 2)
+    local k = 256
+    if (state.t / k) % 1 < 0.02 then
+      --o.s = 29
+    else
+      o.s = 28
+    end
+    o.xflip = ((state.t / k) % 2 < 1)
+  end)
 end
 
 function init_rose_garden(state)
@@ -261,8 +585,6 @@ function init_rose_garden(state)
     add(state.drawables, obj)
   end
 
-  -- you cant remember this one
-  --add_talker(16, 100, 32)
   add_talker(16, 100, 32, {"you are reminded of", "something deep inside you"})
   add_talker(16, 46, 26, {"the scent of roses fills you"})
   add_talker(16, 40, 48, {"the scent brings a","great melencholy"})
@@ -271,21 +593,11 @@ function init_rose_garden(state)
   add_talker(16, 40, 80, {"what is worse,", "the pain of the remembering,", " or the pain of the smelling?", text_pause = 10}, true)
   add_talker(16, 70, 52, {"you are transported back home,", "your mother smiles", text_pause = 12 })
   add_talker(16, 98, 89, {"actually you dont really like", "this one" }, true)
-  --add_talker(19, 90, 10, {"saint waningus\'", "garden of smells"})
 
   add_talker(20, 23, 100, {"an oil painting in front", "of you, it is ugly and ", "shouldn't be here", text_pause = 2}, true)
   add_talker(25, 76, 115, {"the smell of burning wax", "evokes...", "evokes...", text_pause = 12})
 
   add_talker(28, 67, 78, {"\"my soul is a vessel,", "and my nose the steam paddle\"", text_pause = 10}, true)
-
-  --add(state.objects, {16, x = 10, y = 82, text = {"your nose births the", "disappointment anew" }})
-  --add(state.objects, {16, x = 40, y = 80, text = "the pain of remembering fills you, is this the most pain?" })
-  --add(state.objects, {16, x = 60, y = 62, text = "your mother is laughing, these flowers in her hair" })
-  --add(state.objects, {16, x = 60, y = 102, text = "memory waters the plant with attention" })
-
-  --add(state.objects, {16, x = 100, y = 32, text = "you reminise" })
-  --add(state.objects, {28, x = 84, y = 82, text = {"ah i could smell you coming", "i was reminded of my dog", text_pause = 12} })
-  --add(state.objects, {28, x = 84, y = 82, text = {"i prefer the feeling den", "i was reminded of my dog", text_pause = 12} })
 end
 
 function make_player(x, y)
@@ -317,7 +629,6 @@ function make_player(x, y)
         t_yvel = spd
       end
 
-      --local d = sqrt(sqr(t_xvel) + sqr(t_yvel))
       if t_xvel != 0 or t_yvel != 0 then
         local a = 0.25 + atan2(-t_yvel, t_xvel)
         t_xvel = spd * cos(a)
@@ -348,15 +659,12 @@ function make_player(x, y)
       if (p_spd > 0.0001) then
         p.footstep_t -= p_spd
         if (p.footstep_t < 0) then
-          p.footstep_t = 5
+          p.footstep_t = 3.5
           sfx(4)
         end
       else
         p.footstep_t = 0
       end
-
-      --p.x += p.xvel
-      --p.y += p.yvel
 
       local tx = max(state.min_x, min(p.x + p.xvel, state.max_x))
       local ty = max(state.min_y, min(p.y + p.yvel, state.max_y))
@@ -371,7 +679,6 @@ function make_player(x, y)
       local has_collided = false
       for i,o in pairs(state.cols) do
         if (not has_collided) and col(o, col_obj) then
-          --sfx(0)
           -- resolve col
           has_collided = true
           local k = 8
@@ -408,8 +715,9 @@ function make_player(x, y)
 
     end,
     draw = function(p, state)
+      --circfill(p.x, p.y, rnd(state.dialogue_state * 2), 0)
+
       --rectfill(p.x, p.y, p.x+3, p.y+3, 7)
-      circfill(p.x, p.y, rnd(state.dialogue_state * 2), 0)
       --if state.dialogue_state > 4 then
         --circfill(p.x, p.y, 3 + rnd(8), 7)
       --end
@@ -441,6 +749,10 @@ function update_dead(state)
   local text = nil
   for i,o in pairs(state.objects) do
     local d2 = sqr(o.x - state.player.x) + sqr(o.y - state.player.y)
+    local d2_target = 60
+    if o.d2 != nil then
+      d2_target = o.text.d2
+    end
     if d2 < 60 then
       dialogue_t = state.dialogue_t + 1
       text = o.text
@@ -451,6 +763,12 @@ function update_dead(state)
           state.smelled_serious += 1
         end
       end
+    end
+  end
+
+  for i,o in pairs(state.objects) do
+    if o.update != nil then
+      o.update(o, state)
     end
   end
 
@@ -508,6 +826,10 @@ function update_dead(state)
   state.phase_col += 0.4 * speed
   state.phase_bg_bits += 0.3 * speed
 
+  if state.custom_update != nil then
+    state.custom_update(state)
+  end
+
   if state.goto_next != nil and state.goto_next.test(state) then
     return state.goto_next.init()
   end
@@ -552,7 +874,9 @@ function draw_dead(state)
   end
 end
 
-------
+----------------------------------
+----------------------------------
+----------------------------------
 
 function init_talking()
   music(-1)
@@ -815,7 +1139,9 @@ function draw_talking(state)
   end
 end
 
-------
+----------------------------------
+----------------------------------
+----------------------------------
 
 function init_intro()
   s = {
@@ -888,6 +1214,11 @@ function draw_intro(state)
   --draw_text(state.t, "intern pete, prepare the stethosisphere", 32, 32, 7)
   --print("intern pete prepare the stethosisphere", 32, 32, 7)
 end
+
+----------------------------------
+----------------------------------
+----------------------------------
+
 
 function draw_text(t, text, x, y, col, sfx_id)
   if sfx_id != nil and t < #text then
@@ -972,6 +1303,16 @@ function generate_fillp(t, k, bits_selector, just_filter)
     return band(pat, filter)
 end
 
+function fill_bits(k)
+    local pat = 0b0000000000000000.1
+    for i = 0,k do
+      local x = shl(1, i)
+      pat = bor(pat, x)
+    end
+
+    return pat
+end
+
 function map_angle(x, a, k)
       --local sample_angle = normalize_angle((a + modp * angle + rnd(0.005)))
       --local sample_angle = (a + modp * angle + rnd(0.005))
@@ -1035,19 +1376,20 @@ function col(obj1, obj2)
     (obj1.y < obj2.y + obj2.h)
 end
 
-function make_noise_transition(target_state)
+function make_noise_transition(target_state, col)
   --cls(7)
-  sfx(8)
+  sfx(19, 0)
   return {
     t = 0,
     updatefn = function(s)
       if s.t > 4 then
-        cls(0)
+        cls(col)
         return target_state
       end
       s.t+=1
     end,
     drawfn = function(s)
+      --rspr(8,32,42 + 1, 32, 16,32, 2.5, -0.26, 1, 1, 11)
       dump_noise(0.25)
     end,
   }
@@ -1056,10 +1398,10 @@ end
 __gfx__
 00000000bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 00000000bb7777bbbbbbbbbbbbbbbbbbbbbbbbbbbb1111bbbb9999bbbb4444bbbbbbb8bbbbbb8bbbbbb8bbbbbbbb8bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-00700700777fffbbbbbbbbbbbbbbbbbbbbbbbbbbbbe1e11bb999999bbb4444bbbbbb8bbbbbb8bbbbbbbb8bbbbbbbb8bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-00077000777fffbbbbbbbbbbbbbbbbbbbbbbbbbbbb4441ebb99ff99bbbbffbbbbbb89bbbbbb9bbbbbbbb98bbbbbbb9bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-000770007b7fffbbbbbbbbbbbbbbbbbbbbbbbbbbbb444eebbb9ff9bbbb6666bbbbbbabbbbbbbabbbbbbbabbbbbbbabbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-00700700bb4444bb444444444444444444444444bbddddbbbb2222bbbb6666bbbbbb7bbbbbbb7bbbbbbb7bbbbbbb7bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+00700700777fffbbbbbbbbbbbbbbbbbbbbbbbbbbbbe1e11bb999999bbb4444bbbbbb8bbbbbb8bbbbbbbb8bbbbbbbb8bbbb22bbbbb2bbb2bbbbb2bbbbbbbbbbbb
+00077000777fffbbbbbbbbbbbbbbbbbbbbbbbbbbbb4441ebb99ff99bbbbffbbbbbb89bbbbbb9bbbbbbbb98bbbbbbb9bbb222bbbbbb2b2bbbbb2b2bbbbbbbbbbb
+000770007b7fffbbbbbbbbbbbbbbbbbbbbbbbbbbbb444eebbb9ff9bbbb6666bbbbbbabbbbbbbabbbbbbbabbbbbbbabbbbb22222bbbb2bbbbb2bbb2bbbbbbbbbb
+00700700bb4444bb444444444444444444444444bbddddbbbb2222bbbb6666bbbbbb7bbbbbbb7bbbbbbb7bbbbbbb7bbbbb2222bbbbbbbbbbbbbbbbbbbbbbbbbb
 00000000bb44444b444444444444444444444444bd44ddbbbbf22fbbbbfeefbbbbbb6bbbbbbb6bbbbbbb6bbbbbbb6bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 00000000bb44444bb4bbbbbbbbbbbbbbbbbbbb4bbdddddbbbbddddbbbbeeeebbbbbb6bbbbbbb6bbbbbbb6bbbbbbb6bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 bbbbbbbbbb7777bbbbbbbbbb44444444bbbbbbbbbb1111bbbb9999bbbb4444bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb7777bbbb7777bbbbbb22bb
@@ -1070,174 +1412,174 @@ bbb3bbbbbb4444bbb432234b44444444b4adda4bbbddddbbbb2222bbbb6666bbb2dddd2bbbbbbbbb
 bbbb3bbbbb4444bbb433224bbb4bb4bbb4dd334bbbd4ddbbbb2222bbbbf66fbbb222222bbbbbbbbbbbbbbbbbb2b2bbbbbb7bb7bbbb7bbbbbbbbbb7bbbbbb2bbb
 bbbb3bbbbb44444bb444444bbb4bb4bbb444444bbd4dddbbbbfddfbbbbfeefbbbb2bb2bbbbbbbbbbbbbbbbbbb222bbbbbb7bb7bbbb7bbbbbbbbbb7bbbbbb2bbb
 bbbb3bbbbb44444bbbbbbbbbbb4bb4bbbbbbbbbbbddddbbbbbddddbbbbeeeebbbb2bb2bb222222222222222222222222bbbbbbbbbbbbbbbbbbbbbbbbbb222bbb
-bbbbbbbbbbbbbbbb555555550000000000000000bbb000bbbbbbbbbbbbbbbbbbbbbbbbbb222222222222222222222b22bbbb2bbbbbbbbbbbbbbbbbbbbbbb22bb
-d4d4d444444d4d4dbbbb5bbb0000000000000000bb0040bbbbbbbbbbbbbbbbbbbbbb8bbb22222222222222222222bbb2bbbb2bbbbbbbbbbbbbbbbbbbbbbb222b
-dddddbbbbbbdddddbbbb5bbb0000000000000000bbb44bbbbbbbbbbbbbbbbbbbbbb888bb22bbbbbbbbbbbbbbbbbbbbb2bbbb2bbbbbbbbbbbbbbbbbbbbbbb2bbb
-dddddbbbbbbddddd555555550000000000000000bb3333bbbbbbbbbbbbbbbbbbbbb888bb22bbbbbbbbbbbbbbbbbbbbb2bbbb2bbbbbbbbbbbbbbbbbbbbb22222b
-ddddbbbbbbbbddddb5bbbbbb0000000000000000bb3333bbbbbbbbbbbbbbbbbbbbb3bbbb22222222bbbbbbbb2b22b222bbbb2bbbbbbbbbbbbbbbbbbbbbbb2bbb
-dbdbbbbbbbbbbdddb5bbbbbb0000000000000000bb4333bbbbbbbbbbbbbbbbbbbbbb3bbb222222222222222222222222bbbb2bbbbbbbbbbbbbbbbbbbbbbb2bbb
-dddbbbbbbbbbbdddbbbbbbbb0000000000000000bb4555bbbbbbbbbbbbbbbbbbbbbb3bbb22bbbbbbbbbbbbbbbbbbbb22bbbb2bbbbbbbbbbbbbbbbbbbbbbb2bbb
-dddbbbbbbbbbbdddbbbbbbbb0000000000000000bb5555bbbbbbbbbbbbbbbbbbbbbb3bbb22b222222bbbbbbbbbbbbb22bbbb2bbbbbbbbbbbbbbbbbbbbb222bbb
-dddbbbbbbbbbbddd000000000000000000000000bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb22b2bbb22b22222bbbbbbb22bbbbbbbbbbbbbbbbbbbbbbbbbbbb222b
-dddbbbbbbbbbbddd000000000000000000000000bbb000bbbbbbbbbbbbbbbbbbbbbbbbbb22b22bb22b2bbb2bbbbbbb22bbbbbbbbbbbbbbbbbbbbbbbbbbbb2bbb
-dddbbbbbbbbbbddd000000000000000000000000bb0040bbbbbbbbbbbbbbbbbbbbbbbbbb22b22bbb2b2bbb2bbbbbbb22bbbbbbbbbbbbbbbbbbbbbbbbbb222bbb
-bddbbbbbbbbbbddd000000000000000000000000bbb44bbbbbbbbbbbbbbbbbbbbbbbbbbb22b22222222bbb2bbbbbbb22bbbbbbbbbbbbbbbbbbbbbbbbbbb2222b
-dddbbbbbbbbbbddd000000000000000000000000bb3333bbbbbbbbbbbbbbbbbbbbbbbbbb22bbbbbbbb2bbb2b22bb2222bbbbbbbbbbbbbbbbbbbbbbbbbbbb2bbb
-ddd4444444444d4d000000000000000000000000bb3333bbbbbbbbbbbbbbbbbbbbbbbbbb2222b2222222222222222222bbbbbbbbbbbbbbbbbbbbbbbb22222bbb
-ddd4444444444ddd000000000000000000000000bb4555bbbbbbbbbbbbbbbbbbbbbbbbbbb2b222bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb22222
-dddbbbbbbbbbbddd000000000000000000000000bb5555bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb2bbb
-bbbbb77777777777777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-bbbb7777777777777777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-bbb777770000077777777777bbbbbbbbbbbbbbbbbbbbbbbbbbb111111bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-bb7777700ffff00000077777bbbbbbbbbbbbbbbbbbbbbbb1e11e11101e1e0111bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-bb777770ffffffffff007777bbbbbbbbbbbbbbbbbbbbb111e1101e10ee1e0111bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-bb777700fffffffffff00777bbbbbbbbbbbbbbbbbbbbbe11e1100e101eee0111bebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b777770fffffffffffff0777bbbbbbbbbbbbbbbbbbbbb0e1eee00e101eee01e11eebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b777700aaaaffffffaaf0077bbbbbbbbbbbbbbbbbbbbe001eee000e00ee00ee11eeebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbbbbbbbbbbbb55555555bbbbbbbbbbbbbbbbbbb000bbbbbbbbbbbbbbbbbbbbbbbbbb222222222222222222222b22bbbb2bbbbbbbbbbbbbbbbbbbbbbb22bb
+d4d4d444444d4d4dbbbb5bbbbbbbbbbbbbbbbbbbbb0040bbbbbbbbbbbbbbbbbbbbbb8bbb22222222222222222222bbb2bbbb2bbbbbbbbbbbbb22bbbbbbbb222b
+dddddbbbbbbdddddbbbb5bbbbbbbbbbbbbbbbbbbbbb44bbbbbbbbbbbbbbbbbbbbbb888bb22bbbbbbbbbbbbbbbbbbbbb2bbbb2bbbbbbb2b2bb222222bbbbb2bbb
+dddddbbbbbbddddd55555555bbbbbbbbbbbbbbbbbb3333bbbbbbbbbbbbbbbbbbbbb888bb22bbbbbbbbbbbbbbbbbbbbb2bbbb2bbbbb22222bbb2222bbbb22222b
+ddddbbbbbbbbddddb5bbbbbbbbbbbbbbbbbbbbbbbb3333bbbbbbbbbbbbbbbbbbbbb3bbbb22222222bbbbbbbb2b22b222bbbb2bbbb22222bbbbbb22bbbbbb2bbb
+dbdbbbbbbbbbbdddb5bbbbbbbbbbbbbbbbbbbbbbbb4333bbbbbbbbbbbbbbbbbbbbbb3bbb222222222222222222222222bbbb2bbbbb2222bbbbbbb2bbbbbb2bbb
+dddbbbbbbbbbbdddbbbbbbbbbbbbbbbbbbbbbbbbbb4555bbbbbbbbbbbbbbbbbbbbbb3bbb22bbbbbbbbbbbbbbbbbbbb22bbbb2bbbbbbbbbbbbbbbbbbbbbbb2bbb
+dddbbbbbbbbbbdddbbbbbbbbbbbbbbbbbbbbbbbbbb5555bbbbbbbbbbbbbbbbbbbbbb3bbb22b222222bbbbbbbbbbbbb22bbbb2bbbbbbbbbbbbbbbbbbbbb222bbb
+dddbbbbbbbbbbdddbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb22b2bbb22b22222bbbbbbb22bbbbbbbbbbbbbbbbbbbbbbbbbbbb222b
+dddbbbbbbbbbbdddbbbbbbbbbbbbbbbbbbbbbbbbbbb000bbbbbbbbbbbbbbbbbbbbbbbbbb22b22bb22b2bbb2bbbbbbb22bbbbbbbbbbbbbbbbbbbbbbbbbbbb2bbb
+dddbbbbbbbbbbdddbbbbbbbbbbbbbbbbbbbbbbbbbb0040bbbbbbbbbbbbbbbbbbbbbbbbbb22b22bbb2b2bbb2bbbbbbb22bbbbbbbbbbbbbbbbbbbbbbbbbb222bbb
+bddbbbbbbbbbbdddbbbbbbbbbbbbbbbbbbbbbbbbbbb44bbbbbbbbbbbbbbbbbbbbbbbbbbb22b22222222bbb2bbbbbbb22bbbbbbbbbbbbbbbbbbbbbbbbbbb2222b
+dddbbbbbbbbbbdddbbbbbbbbbbbbbbbbbbbbbbbbbb3333bbbbbbbbbbbbbbbbbbbbbbbbbb22bbbbbbbb2bbb2b22bb2222bbbbbbbbbbbbbbbbbbbbbbbbbbbb2bbb
+ddd4444444444d4dbbbbbbbbbbbbbbbbbbbbbbbbbb3333bbbbbbbbbbbbbbbbbbbbbbbbbb2222b2222222222222222222bbbbbbbbbbbbbbbbbbbbbbbb22222bbb
+ddd4444444444dddbbbbbbbbbbbbbbbbbbbbbbbbbb4555bbbbbbbbbbbbbbbbbbbbbbbbbbb2b222bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb22222
+dddbbbbbbbbbbdddbbbbbbbbbbbbbbbbbbbbbbbbbb5555bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb2bbb
+bbbbb77777777777777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb77bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbb7777777777777777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb770bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbb777770000077777777777bbbbbbbbbbbbbbbbbbbbbbbbbbb111111bbbbbbbbbbbbbbbbbbbbbbbbbb77bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bb7777700ffff00000077777bbbbbbbbbbbbbbbbbbbbbbb1e11e11101e1e0111bbbbbbbbbbbbbbbbbbb77bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bb777770ffffffffff007777bbbbbbbbbbbbbbbbbbbbb111e1101e10ee1e0111bbbbbbbbbbbbbbbbbbb77777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bb777700fffffffffff00777bbbbbbbbbbbbbbbbbbbbbe11e1100e101eee0111bebbbbbbbbbbbbbbbbb7777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+b777770fffffffffffff0777bbbbbbbbbbbbbbbbbbbbb0e1eee00e101eee01e11eebbbbbbbbbbbbbbbb7777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+b777700aaaaffffffaaf0077bbbbbbbbbbbbbbbbbbbbe001eee000e00ee00ee11eeebbbbbbbbbbbbbbb7b7b7b7bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 b77770ffffaaaaaaaafff077ffaaaaaaaafff077bbee00eeeeeeeee4eeeeeeeeeeeeebbb0000e00ebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 b77770ffffffffffffffff07ffffffffffffff07bbbee0e0000000ee0000e001eeeeebbb4440400ebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 b77700f0000ffffff0000ff0000ffffff0000ff0bbbee04400004444444040011eeeebbb41111000bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 b7770ff444004ff400444ff044004ff400444ff0bbbee01111144444411110011eeeebbb11444400bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b7770f2222244ff4442222ff22444ff4444422ffbbbee044441144441144440e99eeebbb44222200bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b770044107444ff44410742f22244ff44422242fbbbe0422222444442222220e40eeebbb44707020bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b770f4a100aaffff4a100aff0022ffff422004ffbbee0440707444444070724040eebebb44700040bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b770fff4444ffffff4444fff444ffffff4444fffbbee0440007444444000744440eeeebb44444440bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b770ffffffffffaffffffff4bbbbbbbbbbbbbbbbbbee0044444444444444444000eebebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b77704ffffffffaffffffff4bbbbbbbbbbbbbbbbbeee0044444404444444444000eeebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b777044fffff0faf0ffff444bbbbbbbbbbbbbbbbbebe0004444404440444444000eeebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b777044444000faf00044420bbbbbbbbbbbbbbbbbeee0044444094440044444040eeebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-bbb702244200ff4ff0044220bbbbbbbbbbbbbbbbbeee004444904444404444400eeebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-bbb7b0222200000000222200bbbbbbbbbbbbbbbbbeeebb0444400000004444409eeebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-bbbbb000000f40004f000040bbbbbbbbbbbbbbbbbbbeee0444444000444444001eeebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-bbbbb04420ff44444ff04440bbbbbbbbbbbbbbbbbbbbeb04444444444444440beeeebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-bbbbb04ffff022f222ffff40fff22222222fff40bbbbbb00444022000044440bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-bbbbb00fff022222220ffff0ff220000002ffff0bbbbbbb0440222222204400bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-bbbbbb00fff0000000ffff00fff22000022fff00bbbbbbbb04400000004440bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-bbbbbbb0fffff444ffffff00ffff222222ffff00bbbbbbbb00444444444400bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-bbbbbbb0fffaaaaaaff0000bfffaaaaaaff0000bbbbbbbbbb004444444000bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-bbbbbbb000ffffffa00bbbbb00ffffffa00bbbbbbbbbbbbbbb000444000bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-bbbbbbbbbb00000000bbbbbbbb00000000bbbbbbbbbbbbbbbbbbb00000bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+b7770f2222244ff4442222ff22444ff4444422ffbbbee044441144441144440e99eeebbb44222200bb777777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+b770044107444ff44410742f22244ff44422242fbbbe0422222444442222220e40eeebbb447070207777777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+b770f4a100aaffff4a100aff0022ffff422004ffbbee0440707444444070724040eebebb447000407077777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+b770fff4444ffffff4444fff444ffffff4444fffbbee0440007444444000744440eeeebb44444440b7b7b7b7b7bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+b770ffffffffffaffffffff4bbbbbbbbbbbbbbbbbbee0044444444444444444000eebebbbbbbbbbbbbb77bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+b77704ffffffffaffffffff4bbbbbbbbbbbbbbbbbeee0044444404444444444000eeebbbbbbbbbbbbb770bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+b777044fffff0faf0ffff444bbbbbbbbbbbbbbbbbebe0004444404440444444000eeebbbbbbbbbbbbbb77bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+b777044444000faf00044420bbbbbbbbbbbbbbbbbeee0044444094440044444040eeebbbbbbbbbbbbbb77777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbb702244200ff4ff0044220bbbbbbbbbbbbbbbbbeee004444904444404444400eeebbbbbbbbbbbbbbb7777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbb7b0222200000000222200bbbbbbbbbbbbbbbbbeeebb0444400000004444409eeebbbbbbbbbbbbbbb7b7b7b7bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbb000000f40004f000040bbbbbbbbbbbbbbbbbbbeee0444444000444444001eeebbbbbbbbbbbbbbbbb7bbb7bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbb04420ff44444ff04440bbbbbbbbbbbbbbbbbbbbeb04444444444444440beeeebbbbbbbbbbbbbbbbb7bbb7bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbb04ffff022f222ffff40fff22222222fff40bbbbbb00444022000044440bbbbbbbbbbbbbbbbbbbb77bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbb00fff022222220ffff0ff220000002ffff0bbbbbbb0440222222204400bbbbbbbbbbbbbbbbbbb770bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbb00fff0000000ffff00fff22000022fff00bbbbbbbb04400000004440bbbbbbbbbbbbbbbbbbbbb77bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbbb0fffff444ffffff00ffff222222ffff00bbbbbbbb00444444444400bbbbbbbbbbbbbbbbbbbbb77777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbbb0fffaaaaaaff0000bfffaaaaaaff0000bbbbbbbbbb004444444000bbbbbbbbbbbbbbbbbbbbbb7777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbbb000ffffffa00bbbbb00ffffffa00bbbbbbbbbbbbbbb000444000bbbbbbbbbbbbbbbbbbbbbbbb7777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbbbbbb00000000bbbbbbbb00000000bbbbbbbbbbbbbbbbbbb00000bbbbbbbbbbbbbbbbbbbbbbbbb7b7b7b7bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb7bbb7bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 __label__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000444444440000000000000000000000000000000000
-000000000000000000000000000000000000000000000000000000000000000000000000000000000000004ffffff40000000000000000000000000000000000
-000000000000000000000000000000000000000000000000000000000000000000000000000000000000004ffffff40000000000000000000000000000000000
-000000000000000000000000000000000000000000000000000000000000000000000000000000000000004ffffff40000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000444444440000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000004004000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000004004000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000004004000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000070000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000008000000000000000070000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000088800000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000088800000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000003000000000000000070000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000003000000000000000777700000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000003000000000000000070700000000000000000000000000000000008000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000777700000000000000000000000000000000088800000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000007777770000000000000000000000000000000088800000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000700700000000000000000000000000000000030000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000700700000000000000000000000000000000003000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000088800000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000088800000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000003000000000000000000000000000008000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000003000000000000000000000000000088800000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000003000000000000000000000000000088800000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000
-00000000000080000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000888000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000888000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000070007000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000777700000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000070700000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000008000000000000000000000000777700000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000088800000000000000000000007777770000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000088800000000000000000000000700700000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000030000000000000000000000000700700000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000707000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000220000000000000000000000777700000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000200000000000000000000007777770000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000002200000000000000000000000700700000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000200000000000000000000000700700000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000002222000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000022200000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000220000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000222000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000022222000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000022200000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000022200000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000220000000000002220000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000200000000000000222200000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000002200000000000000020000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000200000000000222220000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000002222000000000000222220000000000000000000000000000000220000000000000000000000000000000000000000000000000
+00000000000000000000000000200000000000000020000000000000000000000000000000000200000000000000000000000000000000000000000000000000
+00000000000000000000000000200000000000000000000000000000000000000000000000002200000000000000000000000000000000000000000000000000
+00000000000000000000000022200000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000
+00000000000000000000000000022000000000000000000000000000000000000000000000002222000000000000000000000000000000000000000000000000
+00000000000000000000000000022200000000000000000000000000000000000000000000000222000000000000000000000000000000000000000000000000
+00000000000000000000000000020000000000000000000000000000000000000000000000000222000000000000000000000000000000000000000000000000
+00000000000000000000000002222200000000000000000000000000000000000000000000022222222000000000000000000000000000000000000000000000
+00000000000000000000000000020000000000000000000000000000000000000000000000022222220000000000000000000000000000000000000000000000
+00000000000000000000000000020000000000000000000000000000000000000000000000002222220000000000000000000000000000000000000000000000
+00000000000000000000000000020000002200000000000000000000000000000000000000000222200000000000000000000000000000000000000000000000
+00000000000000000000000002220000000200000000000000000000000000000000000000022222000000000000000000000000000000000000000000000000
+00000000000000000000000000002220000220000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000
+00000000000000000000000000002000000200000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000
+00000000000000000000000000222000022220000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000
+00000000000000000000000000022220000200000000000000000000000000000000000000022200000000000000000000000000000000000000000000000000
+00000000000000000000000000002000000200000000000000000000000000000000000000000022200000000000000000000000000000000000000000000000
+00000000000000000000000022222000000222000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000
+00000000000000000000000000022222000220000000000000000000000000000000000000002220000000000000000000000000000000000000000000000000
+00000000000000000000000000002000002220000000000000000000000000000000000000000222200000000000000000000000000000000000000000000000
+00000000000000000000000000000000000020000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000
+00000000000000000000000000000000002222200000000000000000000000000000000000222220000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000020000000000000000000000000000000000000000222220000000000000000000000000000000000000000000000
+00000000000000000000000000000000000020000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000022200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000222000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000002220000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000222200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000002200000000000002000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000200000000000002222200000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000220000000002222200220000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000200000000000002000200000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000022220000000000000002200000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000200000000000000000200000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000200000000000000002222000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000222000000000000000200000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000220000000000000000200000000000000000000000220000000000000000000000000000000000000000000000000000000000000
+00000000000000000000002220000000000000022200000000000000000000000200000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000020000000000000000220000000000000000000002200000000000000000000000000000000000000000000000000000000000000
+00000000000000000000002222200000000000000222000000000000000000000200000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000020000000000000000200000000000000000000002222000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000020000000000000022222000000000000000000000200000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000020000000000000000200000000000000000000000200000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000022200000000000000200000000000000000000022200000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000222000000000000000200000000000000000000000220000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000002000000000000022200000000000000000000000222000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000002220000000000000022220000000000000000000200000000000000000000000000000000000000000000000220000000000000
+00000000000000000000000222200000000000000020200000000000000000022222000000000000000000000000000000000000000000000200000000000000
+00000000000000000000000002000000000000002222200000000000000000000200000000000000000000000000000000000000000000002200000000000000
+00000000000000000000000002222200000000000222200000000000000000000200000000000000000000000000000000000000000000000200000000000000
+00000000000000000000002222200000000000000022222000000000000000000200000000000000000000000000000000000000000000002222000000000000
+00000000000000000000000002000000000000222220200000000000000000022200000000000000000000000000000000000000000000000200000000000000
+00000000000000000000000000000000000000000222220000000000000000000022200000000000000000000000000000000000000000000200000000000000
+00000000000000000000000000000000000000000022200000000000000000000020000000000000000000000000000000000000000000022200000000000000
+00000000000000000000000000000000000000000000220000000000000000002220000000000000000000000000000000000000000000000022000000000000
+00000000000000000000000000000000000000000000222000000000000000000222200000000000000000000000000000000000000000000022200000000000
+00000000000000002200000000000000000000000000200000000000000000000020000000000000000000000000000000000000000000000020000000000000
+00000000000000002000000000000000000000000022222200000000000000222220000000000000000000000000000000000000000000002222200000000000
+00000000000000022000000000000000000000000000200000000000000000000222220000000000000000000000000000000000000000000020000000000000
+00000000000000002000000000000000000000000000200000000000000000000020000000000000000000000000000000000000000000000020000000000000
+00000000000000022220000000000000000000000000200000000000000000000000002200000000000000000000000000000000000000000020000000000000
+00000000000000002000000000000000000000000022200000000000000000000000000200000000000000000000000000000000000000002220000000000000
+00000000000000002000000000000000000000000000022200000000000000000000000220000000000000000000000000000000000000000000000000000000
+00000000000000222000000000000000000000000000020000000000000000000000000200000000000000000000000000000000000000000000000000000000
+00000000000000002200000000002200000000000002220000000220000000000000022220000000000000000000000000000000000000000000000000000000
+00000000000000002220000000002000000000000000222200000020000000000000000200000000000000000000000000000000000000000000000000000000
+00000000000000002000000000022000000000000000020000000022000000000000000200000000000000000000000000000000000000000000000000000000
+00000000000000222220000000002000000000000222220000000020000000000000000222000000000000000000000000000000000000000000000000000000
+00000000000000002000000000022220000000000000222220002222000000000000000220000000000000000000000000000000000000000000000000000000
+00000000000000002000000000002000000000000000020000000020000000000000002220000000000000000000000000000000000000000000000000000000
+00000000000000002000000000002000000000000000000000000020000000000000000020000000000000000000000000000000000000000000000000000000
+00000000000000222000000000222000000000000000000000000022200000000000002222200000000000000000000000000000000000000000000000000000
+00000000000000002220000000002200000000000000000000000220000000000000000020000000000000000000000000000000000000000000000000000000
+00000000000000002000000000002220000000000000000000002222000000000000000020000000000000000000000000000000000000000000000000000000
+00000000000000222000000000002000000000000000000000000020000000000000000020000000000000000000000000000000000000000000000000000000
+00000000000000022220000000222220000000000000000000002222200000000000000022200000000000000000000000000000000000000000000000000000
+00000000000000002000000000002000000000000000000000000020000000000000002220000000000000000000000000000000000000000000000000000000
+00000000000022222000000000002000000000000000000000000022000000000000000020000000000000000000000000000000000000000000000000000000
+00000000000000022222000000002000000000000000000000000020000000000000000022200000000000000000000000000000000000000000000000000000
+00000000000000002000000000222000000000000000000000000022200000000000002222000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000222000000000000000000000222000000000000000020000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000200000000000000000000000002000000000000000022222000000000000000000000000000000000000000000000000000
+00000000000000000000000000022200000000000000000000000002220000000000022222000000000000000000000000000000000000000000000000000000
+00000000000000000000000000002222000000000000000000000222200000000000000020000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000200000000000000000000000002000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000002222200000000000000000000000002222200000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000002222200000000000000000002222200000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000200000000000000000000000002000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008880000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008880000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000444444000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000411a14000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000041afa4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000000000000000004adda4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000000000000000004dd334000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000444444000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000090000000000000000000000000000000000000000000000000000
-0000000000000000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000007000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -1257,7 +1599,7 @@ __sfx__
 010100001773017731171311a1311a0311a0310e03002030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 011a0000021511a0111a05126111321113e71102221023311a0211a0211a0211a0211a0211a0211a0241a02421011210512d11139111217110922109321090311d0201d0211d0211c0211c0211c0211c0211c021
 011800000e2101a2101a11026214263101a51026114261110e2101a2101a110262141a3101a51026114261112121021210211102d21421310215102d1142d1111c2101c2101c110282141c3101c5102811428111
-01020000186111a621346211d631376411d6411c6413263118621326211c621296211f621346211a6213c6211862132611346111d611286111a61124611326112661118611326111c61134611356112861132611
+01020000186111a611346211d621376311d6311c6313262118621326211c621296211f611346111a6113c6111861132611346111d611286111a61124611326112661118611326111c61134611356112861132611
 011500000504005040050400504005040050400504005040050400504005040050400504005040050400504005040050400504005040050400504005040050400504005040050400504005040050400504005040
 011500000204002040020400204002040020400204002040020400204002040020400204002040020400204004040040400404004040040400404004040040400404004040040400404004040040400404004040
 01150000117541175015754157501c7541c7521575415750117541175015754157501c7541c7501573415750177541775018754187501f7541f7521875418750177541775018754187501d7541d7501875418750
@@ -1266,12 +1608,15 @@ __sfx__
 010a000014155141051415514005115550000008511085211455114552141551410000000161550000000000200500000020050000001d0500000000000000000000000000000000000000000000000000000000
 012800001d740217301d720217401d730217201d740217301d740217301d720217401d730217201d740217301d740227301d720227401d730227201d740227301d740227301d720227401d730227201d74022730
 01280000021250e125021250e125021251a72526725307252e7312e0322e0322e0222e0222e0202e0200000000000000000000000000000000000000000000002b02426731260222601226012260122601226010
-011000002570425724257122571225712000020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-012800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+011000002570025724257122571225712000020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+010e00000062702627106211161113621056270462702622006270e62110621056270762704627026270c6210c621026270462705627196121a61200622006220262700627026270462704627116211062100627
+010200003c51430512185221822218432184312843126421244211a4211c4211d4211f411105110e5110c7110c7110e7111071105711047110221100211022110221100211022110421104211052110421102211
 __music__
 03 02034344
 04 06074344
 01 094a0c4c
 02 0a4a0b4c
 03 0f101244
+01 4912094c
+02 4a524b4c
 
