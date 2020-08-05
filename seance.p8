@@ -21,8 +21,13 @@ __lua__
 -- Go to sleep
 -- walk to hub
 -- each hub character says different things
+-- gradually infected?
 -- go to thing
 -- get woken up
+--
+-- float like a jellyfish, sting like a jellyfish
+-- only come out at night like a gay vampire
+-- "Even if he would like to go into a dream, an error takes place. Even if he would like to go into a dream, an error takes place." 
 
 
 text_speed = 0.35
@@ -35,10 +40,9 @@ action_pressed_last_frame = false
 function _init()
   cls(0)
 
-  music(2, 8000)
-
   global_state = init_dead()
-  init_house(global_state)
+  --init_house(global_state)
+  init_bedroom(global_state)
 
   --init_crossroads(global_state)
   --global_state = init_intro()
@@ -155,7 +159,222 @@ add_bird = function(state, x, y, xvel, yvel, flip)
   add(state.drawables, bird)
 end
 
-add_tree = function(state, x, y, h, flip)
+function add_static_prop(state, sprite, x, y)
+  local s = {
+    s = sprite,
+    x = x,
+    y = y,
+    xflip = false,
+    draw = function(o, state)
+      if (not state.hide_props) then
+        palt(11, true)
+        palt(0, false)
+        spr(o.s, o.x - 4, o.y - 4, 1, 1, o.xflip)
+        palt()
+      end
+    end,
+  }
+
+  add(state.drawables, s)
+end
+
+function init_bedroom(state)
+  add(state.dialogue, ".")
+  add(state.dialogue, ".")
+
+  state.player.x = 40
+  state.player.y = 70
+
+  state.min_y = 58
+  state.max_y = 80
+  state.min_x = 35
+  state.max_x = 128-35
+
+  add_static_prop(state, 78, 64-24, 64-8)
+  add_static_prop(state, 18, 64+8, 64-10)
+
+  local door = {
+    x = 64 - 24,
+    y = 64 - 8,
+    text = {"it is dangerous outside"}
+  }
+  add(state.objects, door)
+
+  add_static_prop(state, 32, 64-8, 64+8)
+  add_static_prop(state, 33, 64, 64+8)
+  add_static_prop(state, 48, 64-8, 64+16)
+  add_static_prop(state, 49, 64, 64+16)
+
+  local window_text = {
+    x = 64 - 6,
+    y = 64 + 10,
+    text = {"people are clapping outside"}
+  }
+  add(state.objects, window_text)
+
+  local window_col = {
+    x = 64-6,
+    y = 64+10,
+    w = 6,
+    h = 6,
+  }
+
+  add_static_prop(state, 76, 64+22, 64+7)
+  add_static_prop(state, 77, 64+22+8, 64+7)
+
+  local bed = {
+    x = 64 + 27,
+    y = 64 + 10,
+  }
+
+  --local bed_text = {
+  --  x = 64 + 27,
+  --  y = 64 + 10,
+  --  text = {"drifting", "drifting", "drifting"}
+  --}
+  --add(state.objects, bed_text)
+
+  local bed_col = {
+    x = bed.x-6,
+    y = bed.y-4,
+    w = 12,
+    h = 4,
+  }
+  --add(state.objects, bed)
+
+  state.disable_cls = true
+  state.hide_props = false
+
+  local bgdraw = {
+    y = 0,
+    inwindow = false,
+    nearbed = false,
+    nearbed_t = 0,
+    draw = function(o, state)
+      local player_col = {
+        x = state.player.x-2,
+        y = state.player.y-2,
+        w = 4,
+        h = 4,
+      }
+      if col(window_col, player_col) then
+        if (not o.inwindow) then
+          music(5, 4000)
+          o.inwindow = true
+          state.hide_props = true
+          --cls(7)
+          cls(13)
+          --cls(1)
+        end
+        local pat = generate_cycle_fillp(flr(state.t / 7) % 16)
+        --cls(0)
+        fillp(pat)
+        rectfill(0, 0, 128, 128, 9)
+        --rectfill(0, 0, 128, 128, 12)
+        fillp()
+        rectfill(54, 64+5, 64, 64+18, 0)
+        palt(11, true)
+        sspr(0, 16, 16, 16, 64-12, 64+4)
+        palt()
+        if (rnd(100) < 2) then
+          dump_noise(0.035)
+        end
+      else
+        music(-1, 500)
+        o.inwindow = false
+        state.hide_props = false
+        local pat = generate_cycle_fillp(flr(state.t) % 16)
+        fillp(pat)
+        --rectfill(0, 0, 128, 58, 0)
+        rectfill(0, 0, 128, 128, 0)
+        fillp()
+
+        if col(bed_col, player_col) then
+          o.nearbed_t += 1
+          sfx(22)
+        else
+          o.nearbed_t = o.nearbed_t / 2
+        end
+
+        if (o.nearbed_t > 24) then
+          state.hide_props = true
+          local k = 0.0005
+          local c = k * (o.nearbed_t - 24)^1.5
+          local xx = c * state.player.x
+          local xx_inv = c * (128 - state.player.x)
+          local yy = c * state.player.y
+          local yy_inv = c * (128 - state.player.y)
+          local col = 7
+          -- l
+          rectfill(0, 0, xx, 128, col)
+          -- u
+          rectfill(0, 0, 128, yy, col)
+          -- r
+          rectfill(128 - xx_inv, 0, 128, 128, col)
+          -- d
+          rectfill(0, 128-yy_inv, 128, 128, col)
+
+          palt(11, true)
+          spr(76, bed.x-9, bed.y-7)
+          spr(77, bed.x-1, bed.y-7)
+          palt()
+        else
+          -- back wall
+          rectfill(32, 48, 128-32, 58, 2)
+        end
+      end
+      --cls(0)
+    end,
+  }
+
+  state.goto_next = {
+    test = function(state)
+      return bgdraw.nearbed_t > 190
+    end,
+    init = function()
+      -- transition
+      local s = init_dead()
+      init_bedroom_asleep(s)
+      s.player.x = state.player.x
+      s.player.y = state.player.y
+      return make_noise_transition(s)
+    end,
+  }
+
+  add(state.drawables, bgdraw)
+end
+
+function init_bedroom_asleep(state)
+  add(state.dialogue, ".")
+  add(state.dialogue, ".")
+
+  state.min_y = 10
+  state.max_y = 118
+  state.min_x = 10
+  state.max_x = 118
+
+  local door_x = 64-24
+  local door_y = 64-4
+
+  add_static_prop(state, 78, door_x-4, door_y-4)
+
+  add_static_prop(state, 76, 64+22, 64+7)
+  add_static_prop(state, 77, 64+22+8, 64+7)
+
+  state.goto_next = {
+    test = function(state)
+      local dist2 = sqr(state.player.x - door_x) + sqr(state.player.y - door_y)
+      return dist2 < 12
+    end,
+    init = function()
+      local s = init_dead()
+      init_house(s)
+      return make_noise_transition(s)
+    end,
+  }
+end
+
+function add_tree(state, x, y, h, flip)
   local tree = {
     x = x,
     y = y,
@@ -176,14 +395,11 @@ add_tree = function(state, x, y, h, flip)
   add(state.drawables, tree)
 end
 
-function init_bedroom(state)
-  add(state.dialogue, ".")
-  add(state.dialogue, ".")
-end
-
 function init_house(state)
   add(state.dialogue, ".")
   add(state.dialogue, ".")
+
+  music(2, 8000)
 
   state.min_x = 20
   state.max_x = 108
@@ -837,10 +1053,12 @@ end
 
 function draw_dead(state)
   --cls(0)
-  local pat = generate_fillp(state.t, 32, state.phase_bg_bits, false)
-  fillp(pat)
-  rectfill(0, 0, 128, 128, state.phase_col)
-  fillp()
+  if (not state.disable_cls) then
+    local pat = generate_fillp(state.t, 32, state.phase_bg_bits, false)
+    fillp(pat)
+    rectfill(0, 0, 128, 128, state.phase_col)
+    fillp()
+  end
 
   insertion_sort(state.drawables, function(list, i) return list[i].y end)
 
@@ -1282,6 +1500,20 @@ function sqr(x)
   return x * x
 end
 
+function generate_cycle_fillp(k)
+    local pat = 0b1111111111111111.1
+    local x = bnot(shl(1, k))
+    pat = band(x, pat)
+    return pat
+    -- local i = 0
+    --while i < min(k, 32) do
+    --  local x = shl(1, i)
+    --  pat = bor(pat, x)
+    --  i += 1
+    --end
+    --return pat
+end
+
 function generate_fillp(t, k, bits_selector, just_filter)
     local filter = 0
     if (t % k) < k/2 then
@@ -1428,13 +1660,13 @@ dddbbbbbbbbbbdddbbbbbbbbbbbbbbbbbbbbbbbbbb3333bbbbbbbbbbbbbbbbbbbbbbbbbb22bbbbbb
 ddd4444444444d4dbbbbbbbbbbbbbbbbbbbbbbbbbb3333bbbbbbbbbbbbbbbbbbbbbbbbbb2222b2222222222222222222bbbbbbbbbbbbbbbbbbbbbbbb22222bbb
 ddd4444444444dddbbbbbbbbbbbbbbbbbbbbbbbbbb4555bbbbbbbbbbbbbbbbbbbbbbbbbbb2b222bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb22222
 dddbbbbbbbbbbdddbbbbbbbbbbbbbbbbbbbbbbbbbb5555bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb2bbb
-bbbbb77777777777777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb77bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-bbbb7777777777777777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb770bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-bbb777770000077777777777bbbbbbbbbbbbbbbbbbbbbbbbbbb111111bbbbbbbbbbbbbbbbbbbbbbbbbb77bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-bb7777700ffff00000077777bbbbbbbbbbbbbbbbbbbbbbb1e11e11101e1e0111bbbbbbbbbbbbbbbbbbb77bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-bb777770ffffffffff007777bbbbbbbbbbbbbbbbbbbbb111e1101e10ee1e0111bbbbbbbbbbbbbbbbbbb77777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-bb777700fffffffffff00777bbbbbbbbbbbbbbbbbbbbbe11e1100e101eee0111bebbbbbbbbbbbbbbbbb7777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b777770fffffffffffff0777bbbbbbbbbbbbbbbbbbbbb0e1eee00e101eee01e11eebbbbbbbbbbbbbbbb7777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbb77777777777777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb77bbbbbbbbbbbbbbbbbbbbbbbbbbbbbeeeeebbbbbbbbb
+bbbb7777777777777777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb770bbbbbbbbbbbbbbbbbbbbbbeeebbbbebbbebbbbbbbbb
+bbb777770000077777777777bbbbbbbbbbbbbbbbbbbbbbbbbbb111111bbbbbbbbbbbbbbbbbbbbbbbbbb77bbbbbbbbbbbbbeeeeeeeeeeeebbbbebbbebbbbbbbbb
+bb7777700ffff00000077777bbbbbbbbbbbbbbbbbbbbbbb1e11e11101e1e0111bbbbbbbbbbbbbbbbbbb77bbbbbbbbbbbbbeeeeeeeeeeeebbbbebbeebbbbbbbbb
+bb777770ffffffffff007777bbbbbbbbbbbbbbbbbbbbb111e1101e10ee1e0111bbbbbbbbbbbbbbbbbbb77777777bbbbbbbeeeeeeeeeeeebbbbebbbebbbbbbbbb
+bb777700fffffffffff00777bbbbbbbbbbbbbbbbbbbbbe11e1100e101eee0111bebbbbbbbbbbbbbbbbb7777777bbbbbbbbeeeeeeeeebeebbbbebbbebbbbbbbbb
+b777770fffffffffffff0777bbbbbbbbbbbbbbbbbbbbb0e1eee00e101eee01e11eebbbbbbbbbbbbbbbb7777777bbbbbbbbebbbbbbbbbbebbbbeeeeebbbbbbbbb
 b777700aaaaffffffaaf0077bbbbbbbbbbbbbbbbbbbbe001eee000e00ee00ee11eeebbbbbbbbbbbbbbb7b7b7b7bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 b77770ffffaaaaaaaafff077ffaaaaaaaafff077bbee00eeeeeeeee4eeeeeeeeeeeeebbb0000e00ebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 b77770ffffffffffffffff07ffffffffffffff07bbbee0e0000000ee0000e001eeeeebbb4440400ebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
@@ -1605,18 +1837,21 @@ __sfx__
 01150000117541175015754157501c7541c7521575415750117541175015754157501c7541c7501573415750177541775018754187501f7541f7521875418750177541775018754187501d7541d7501875418750
 01150000157541575017754177501c7541c7501775417750157541575017754177501c7541c7501775417740177041775418750187501c7541c7521875418750177541775018754187501c7541c7501775417750
 01100000000001500015000170501704017050170401703017020170101701017010170100c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-010a000014155141051415514005115550000008511085211455114552141551410000000161550000000000200500000020050000001d0500000000000000000000000000000000000000000000000000000000
-012800001d740217301d720217401d730217201d740217301d740217301d720217401d730217201d740217301d740227301d720227401d730227201d740227301d740227301d720227401d730227201d74022730
+010e00021e4451b4451d4451e445004001e20521205061051e2451b2451e2451d2450000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+011c00000633106330063320633006330063300633006330043310433104330043300433004330043300433000330003300033000330003300033000330003300033000330003300033000330003300033012331
 01280000021250e125021250e125021251a72526725307252e7312e0322e0322e0222e0222e0202e0200000000000000000000000000000000000000000000002b02426731260222601226012260122601226010
 011000002570025724257122571225712000020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 010e00000062702627106211161113621056270462702622006270e62110621056270762704627026270c6210c621026270462705627196121a61200622006220262700627026270462704627116211062100627
 010200003c51430512185221822218432184312843126421244211a4211c4211d4211f411105110e5110c7110c7110e7111071105711047110221100211022110221100211022110421104211052110421102211
+01190020000000000000000000000000026710267542671000000000002d7102d7542d72500000000002d7102d7142d71500000000002d7102d7142d705000002d7002d700000000000000000000000000000000
+011000200061702617106111161113611056170461702612006170e61110611056170761704617026170c6110c611026170461705617196121a61200612006120261700617026170461704617116111061100617
+000100000315004050040500315005050040500405004150050500505000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __music__
 03 02034344
 04 06074344
 01 094a0c4c
 02 0a4a0b4c
-03 0f101244
-01 4912094c
+03 4f0e5244
+03 4914154c
 02 4a524b4c
 
