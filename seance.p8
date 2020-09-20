@@ -1,5 +1,5 @@
 pico-8 cartridge // http://www.pico-8.com
-version 18
+version 29
 __lua__
 
 -- ideas
@@ -14,6 +14,7 @@ __lua__
 -- badly thrown pot
 -- the viper character
 -- snoring snoring two in the morning
+-- my taste doesnt align with my talent
 --
 -- crime never pays
 --
@@ -29,6 +30,10 @@ __lua__
 -- only come out at night like a gay vampire
 -- "Even if he would like to go into a dream, an error takes place. Even if he would like to go into a dream, an error takes place." 
 
+-- 
+-- disco elysium style inner voices talking to you
+-- 
+
 
 text_speed = 0.35
 text_speed_internal = text_speed * 1.5
@@ -41,10 +46,16 @@ function _init()
   cls(0)
 
   global_state = init_dead()
-  --init_house(global_state)
-  init_bedroom(global_state)
+  --init_bedroom(global_state)
+  init_sea(global_state)
 
+  --global_state = init_talking()
+
+  --init_house(global_state)
+
+  --global_state = init_dead()
   --init_crossroads(global_state)
+
   --global_state = init_intro()
   --global_state = init_talking()
 end
@@ -191,7 +202,28 @@ function init_bedroom(state)
   state.max_x = 128-35
 
   add_static_prop(state, 78, 64-24, 64-8)
+  -- painting
   add_static_prop(state, 18, 64+8, 64-10)
+  -- plant
+  add(state.drawables, {
+    x = 64-24,
+    y = 64 + 25,
+    draw = function(o, s)
+      if (not state.hide_props) then
+        -- should be hanging so override y for depth
+        palt(11, true)
+        palt(0, false)
+        spr(35, o.x, o.y - 16, 1, 1)
+        palt()
+      end
+    end,
+  })
+
+  add(state.objects, {
+    x = 64 - 24,
+    y = 64 + 25 - 8,
+    text = {"the hanging plant adds", "something to the room"},
+  })
 
   local door = {
     x = 64 - 24,
@@ -207,7 +239,7 @@ function init_bedroom(state)
 
   local window_text = {
     x = 64 - 6,
-    y = 64 + 10,
+    y = 64 + 16,
     text = {"people are clapping outside"}
   }
   add(state.objects, window_text)
@@ -219,6 +251,13 @@ function init_bedroom(state)
     h = 6,
   }
 
+  local painting_text = {
+    x = 64 + 8,
+    y = 64 - 6,
+    text = {"bold acrylic colours"}
+  }
+  add(state.objects, painting_text)
+
   add_static_prop(state, 76, 64+22, 64+7)
   add_static_prop(state, 77, 64+22+8, 64+7)
 
@@ -227,20 +266,12 @@ function init_bedroom(state)
     y = 64 + 10,
   }
 
-  --local bed_text = {
-  --  x = 64 + 27,
-  --  y = 64 + 10,
-  --  text = {"drifting", "drifting", "drifting"}
-  --}
-  --add(state.objects, bed_text)
-
   local bed_col = {
     x = bed.x-6,
     y = bed.y-4,
     w = 12,
     h = 4,
   }
-  --add(state.objects, bed)
 
   state.disable_cls = true
   state.hide_props = false
@@ -258,21 +289,24 @@ function init_bedroom(state)
         h = 4,
       }
       if col(window_col, player_col) then
+
+        --local col1 = 9
+        --local col2 = 13
+        local col1 = 1
+        local col2 = 2
+
         if (not o.inwindow) then
           music(5, 4000)
           o.inwindow = true
           state.hide_props = true
-          --cls(7)
-          cls(13)
-          --cls(1)
+          cls(col2)
         end
         local pat = generate_cycle_fillp(flr(state.t / 7) % 16)
-        --cls(0)
+
         fillp(pat)
-        rectfill(0, 0, 128, 128, 9)
-        --rectfill(0, 0, 128, 128, 12)
+        rectfill(0, 0, 128, 128, col1)
         fillp()
-        rectfill(54, 64+5, 64, 64+18, 0)
+
         palt(11, true)
         sspr(0, 16, 16, 16, 64-12, 64+4)
         palt()
@@ -285,7 +319,6 @@ function init_bedroom(state)
         state.hide_props = false
         local pat = generate_cycle_fillp(flr(state.t) % 16)
         fillp(pat)
-        --rectfill(0, 0, 128, 58, 0)
         rectfill(0, 0, 128, 128, 0)
         fillp()
 
@@ -369,7 +402,9 @@ function init_bedroom_asleep(state)
     init = function()
       local s = init_dead()
       init_house(s)
-      return make_noise_transition(s)
+      local noisy_s = make_noise_transition(s)
+      return noisy_s
+      --return make_text_transition(noisy_s, "the cold breeze hits you#as you step out into the moonlight")
     end,
   }
 end
@@ -597,7 +632,7 @@ function init_mountain(state)
     spr_y_off = 0,
     feeding = false,
     xflip = false,
-    text = {"hmmmmmmmmmmmmmmmmmmm", "SCREACHHHHH", text_pause = 24, d2 = 90},
+    text = {"hmmmmmmmmmmmmmmmmmmm", "SCREACHHHHH", text_pause = 24, d2 = 90, text_snd = 23},
     update = function(o, state)
       local d2 = sqr(o.x - state.player.x) + sqr(o.y - state.player.y)
       if o.x_move == 0 and d2 < 80 then
@@ -692,6 +727,10 @@ function init_crossroads(state)
       circfill(64, 64, 50, col)
       fillp()
       --dump_noise(0.04)
+
+      circfill(64, 64, 13, 1)
+      circfill(58, 64, 11, 1)
+      circfill(72, 64, 11, 1)
     end,
   }
 
@@ -725,11 +764,15 @@ function init_crossroads(state)
     add(state.cols, scol)
   end
 
+  add_tree(state, 15, 18, 2)
+  add_tree(state, 6, 45, 2, true)
+  add_tree(state, 110, 110, 3)
+
   -- sign
   add_obj(24, 8, 60, {"saint waningus\'", "garden of smells"})
   add_obj(24, 120, 60, {"saint david\'s", "conservatory of sounds"})
   add_obj(24, 60, 120, {"saint marks\'s", "shed of sights"})
-  add_obj(12, 40, 40, {"quack"})
+
 -- 
   add_obj(28, 44, 80, {"what is a coralrrafk?", "wait it costs HOW much?"}, function(o, state)
     --o.s = 28 + flr((state.t / 2) % 2)
@@ -743,17 +786,17 @@ function init_crossroads(state)
     end
     o.xflip = ((state.t / k) % 2 < 1)
   end)
-  add_obj(28, 78, 40, {"this crime is piping hot"}, function(o, state)
+  add_obj(60, 78, 40, {"this crime is piping hot"}, function(o, state)
     --o.s = 28 + flr((state.t / 2) % 2)
     local k = 256
     if (state.t + 200 / k) % 1 < 0.02 then
       --o.s = 29
     else
-      o.s = 28
+      o.s = 60
     end
     o.xflip = ((state.t / k) % 2 < 1)
   end)
-  add_obj(28, 74, 80, {"snoring", "snoring", "two in the morning"}, function(o, state)
+  add_obj(28, 74, 80, {"snoring", "snoring", "four in the morning"}, function(o, state)
     --o.s = 28 + flr((state.t / 2) % 2)
     local k = 256
     if (state.t / k) % 1 < 0.02 then
@@ -763,6 +806,353 @@ function init_crossroads(state)
     end
     o.xflip = ((state.t / k) % 2 < 1)
   end)
+
+  local day = 1
+
+  if day == 1 then
+    add_obj(12, 60, 64, {"quack"}) 
+  elseif day == 2 then
+    local facedraw = {
+       x = 0,
+       y = 0,
+       face_angle = 0,
+       face_mod = 0,
+       face_mod_d = 0,
+       face_scale = 1,
+       update = function(o, s)
+         o.face_mod += 0.001
+       end,
+       draw = function(o, s)
+         local face_sprite_x = 0
+         local face_sprite_y = 64 
+         local face_x = 64 - o.face_scale*12
+         local face_y = 64 - o.face_scale*16
+         rspr(face_sprite_x,face_sprite_y,face_x,face_y,24,32,o.face_scale,o.face_angle, o.face_mod, o.face_mod_d, 11)
+       end
+    }
+
+    add(state.objects, facedraw)
+    add(state.drawables, facedraw)
+  end
+end
+
+perlin_scale_k = 4   
+
+function make_perlin(w, h)
+  local perlin = {
+    w = w,
+    h = h,
+    grads = {},
+    get = function(o, x, y)
+      if x > o.w then
+        printh("wtf x: " .. x)
+        x = 0
+      end
+      if y > o.h then
+        printh("wtf y: " .. y)
+        y = 0
+      end
+      return o.grads[1 + (y) * (o.w + 1) + (x)]
+    end
+  }
+  printh("Gradients:")
+  for yy=0,h do
+    for xx=0,w do
+      local grad = rnd()
+      printh(" x: " .. xx .. " y: " .. yy .. " grad: " .. grad * 360)
+      add(perlin.grads, grad)
+    end
+  end
+
+    printh("a")
+    printh(#perlin.grads)
+  for ii=1,#perlin.grads do
+    printh(perlin.grads[ii]*360)
+  end
+
+    printh("Other")
+  for yy=0,h do
+    for xx=0,w do
+      local grad = perlin.get(perlin, xx, yy)
+      printh(" x: " .. xx .. " y: " .. yy .. " grad: " .. grad * 360)
+    end
+  end
+
+  return perlin
+end
+
+function perlin_lerp(x, y, w)
+  return x * w + (y * (1-w))
+end
+
+function avgsmooth(x, y, w)
+  return x + (y - x) * w
+end
+
+function avgsmoothstep(x, y, w)
+  local diff = y - x
+  return x + smoothstep(w) * diff
+end
+
+function smoothstep(x)
+  return 3*x*x - 2 * x * x *x
+end
+
+function sample_perlin(perlin, x, y, t)
+  local grid_w = 128 / perlin.w 
+  local grid_h = 128 / perlin.h 
+  local gx = flr(x / grid_w)
+  local gy = flr(y / grid_h)
+  local g_ul = perlin.get(perlin, gx, gy)
+  local g_ur = perlin.get(perlin, gx+1,gy)
+  local g_dl = perlin.get(perlin, gx,gy+1)
+  local g_dr = perlin.get(perlin, gx+1,gy+1)
+
+  --local gridcenter_x = (gx + 0.5) * grid_w
+  --local gridcenter_y = (gy + 0.5) * grid_h
+  --local norm_xo = (x - gridcenter_x) / grid_w
+  --local norm_yo = (y - gridcenter_y) / grid_h
+  --local ul = (norm_xo) * cos(g_ul) + (norm_yo) * sin(g_ul)
+  --local ur = (1-norm_xo) * cos(g_ur) + (norm_yo) * sin(g_ur)
+  --local dl = (norm_xo) * cos(g_dl) + (1-norm_yo) * sin(g_dl)
+  --local dr = (1-norm_xo) * cos(g_dr) + (1-norm_yo) * sin(g_dr)
+
+  local ul = (x-gx*grid_w) * cos(g_ul) + (y-gy*grid_h)*sin(g_ul)
+  local ur = (x-(gx+1)*grid_w) * cos(g_ur) + (y-gy*grid_h)*sin(g_ur)
+  local dl = (x-(gx)*grid_w) * cos(g_dl) + (y-(gy+1)*grid_h)*sin(g_dl)
+  local dr = (x-(gx+1)*grid_w) * cos(g_dr) + (y-(gy+1)*grid_h)*sin(g_dr)
+
+  --if abs(x - (gx+1)*grid_w) < 2 then
+    --return 100
+  --end
+
+  if false then
+    return 2 * ur / grid_w
+  end
+
+  if false then
+    if y < 64 then
+      return 2 * dr / grid_w
+    else
+      return 2 * ur / grid_w
+    end
+  end
+
+  local norm_xo = (x-gx*grid_w) / grid_w
+  local norm_yo = (y - gy*grid_h) / grid_h
+
+  if false then
+    return norm_yo
+  end
+
+  local interp_up = avgsmoothstep(ul, ur, norm_xo)
+  local interp_down = avgsmoothstep(dl, dr, norm_xo)
+  --if norm_yo > 0.5 then
+  --  return 0.15 * interp_down
+  --else
+  --  return 0.15 * interp_up
+  --end
+  return 0.15*avgsmoothstep(interp_up, interp_down, norm_yo)
+  --return 5*g_ul
+  --return 5*perlin_lerp(interp_up, interp_down, norm_yo)
+  --return norm_xo
+  --return 4*interp_down
+  --return interp_down
+end
+
+function precomp_perlin(perlin)
+  local obj = {
+    w = 128,
+    h = 128,
+    points = {}
+  }
+
+  for y = 0,128-1 do
+    for x =0, 128-1 do
+      add(obj.points, sample_perlin(perlin, x, y, 0))
+    end
+  end
+
+  return obj
+end
+
+function sample_precomp_perlin(pre, x, y, t)
+  return pre.points[1 + (pre.w) * y + x]
+end
+
+function init_sea(state)
+  cls(0)
+  state.disable_cls = true
+
+  add(state.dialogue, ".")
+  add(state.dialogue, ".")
+
+  points = {}
+
+  for i=0,10 do
+    add(points, {x = 64, y = i * 10})
+   end
+
+  local perlin = make_perlin(4, 4)
+
+  local bgdraw = {
+    x = 0,
+    y = 0,
+    t = 0,
+    perlin = perlin,
+    precomp = precomp_perlin(perlin),
+    update = function(o, state)
+      o.t = o.t + 1
+    end,
+    draw = function(o, state)
+      local scale = 2
+      local k = 128/scale
+      for x=0,k do
+        for y=0,k do
+          if rnd() > 0.9 and x*scale < 128 and y*scale < 128 then -- (32*flr(scale*x / 16) != 64) then
+            if true then
+              local col = 2
+              local sampled = sample_precomp_perlin(o.precomp, x*scale, y*scale, o.t)
+              if sampled == nil then
+                printh("nil")
+                printh(x*scale)
+              end
+              local height = 3 + 1*(sampled + rnd(0.5))
+              local tide_t = o.t / 600
+              local tide = 5 * (1 + sin(tide_t)) + 9
+              local diag = x / 8 + y / 4
+              local sea_h = height + diag
+              local froth_h = height + diag + 0.3 * cos(tide_t) * diag
+              local dir = cos(tide_t)
+              if (froth_h) > tide then
+                if (dir > 0) then
+                  col = 7
+                else
+                  col = 8
+                end
+                if (sea_h) > tide then
+                  col = 1
+                end
+              elseif sea_h > tide then
+                col = 13
+              end
+              if col == 2 and rnd() < 0.8 then
+                -- chance to just continue to leave wet sand
+              else
+                rectfill(x*scale, y *scale, (x+1)*scale, (y+1)*scale, col)
+              end
+            end
+            if false then
+              col = 3 + 1*(sample_perlin(o.perlin, x*scale, y*scale, o.t) + rnd(0.5))
+              if (col < 0) then
+                col = 0
+              end
+              col = flr(col)
+            end
+            --rectfill(x*scale, y*scale, (x+1)*scale, (y+1)*scale, col)
+          end
+        end
+      end
+
+      if false then
+        for y=0,o.perlin.h do
+          for x=0,o.perlin.w do
+            local startx = x * 128/o.perlin.w
+            local c = 10
+            if startx < c then
+              startx = startx + c
+            end
+            if startx > 128-c then
+              startx = startx - c
+            end
+
+            local starty = y * 128/o.perlin.h
+            if starty < c then
+              starty = starty + c
+            end
+            if starty > 128-c then
+              starty = starty - c
+            end
+
+            local len = 8
+            local endx = startx + len * cos(o.perlin.get(o.perlin, x, y))
+            local endy = starty + len * sin(o.perlin.get(o.perlin, x, y))
+            rectfill(startx, starty, startx+1, starty+1, 8)
+            line(startx, starty, endx, endy, 7)
+          end
+        end
+      end
+      print(stat(7), 10, 10, 7)
+    end,
+  }
+
+  add(state.objects, bgdraw)
+  add(state.drawables, bgdraw)
+end
+
+function init_sea2(state)
+  cls(0)
+
+  add(state.dialogue, ".")
+  add(state.dialogue, ".")
+
+  points = {}
+  for i=0,10 do
+    add(points, {x = 64, y = i * 10})
+   end
+
+  local bgdraw = {
+    x = 0,
+    y = 0,
+    points = points,
+    update = function(o, state)
+      -- o.points[1].y+=1
+    end,
+    draw = function(o, state)
+      local scale = 4
+      local k = 128/scale
+      for x=0,k do
+        for y=0,k do
+          rectfill(x*scale, y*scale, (x+1)*scale, (y+1)*scale, x)
+        end
+      end
+      local prevx = 0
+      local prevy = 0
+      local first = true
+      for i,p in pairs(o.points) do
+
+        if (not first) then
+          line(p.x, p.y, prevx, prevy, 9)
+        end
+
+        circ(p.x, p.y, 2, 7)
+
+        prevx = p.x
+        prevy = p.y
+        first = false
+      end
+
+      print(stat(7), 10, 10, 7)
+
+      --cls(0)
+      --local col = 1 + flr(state.t / 64) % 2
+      --col = 1
+      --rectfill(64, 64, 128,128, 2)
+      --local pat = fill_bits(flr(8*(1 + sin(state.t / 400))))
+      --fillp(pat)
+      --rectfill(64, 64, 128, 128, col)
+      ----circfill(64, 64, 50, col)
+      --fillp()
+      ----dump_noise(0.04)
+
+      --circfill(64, 64, 13, 1)
+      --circfill(58, 64, 11, 1)
+      --circfill(72, 64, 11, 1)
+    end,
+  }
+
+  add(state.objects, bgdraw)
+  add(state.drawables, bgdraw)
 end
 
 function init_rose_garden(state)
@@ -1076,8 +1466,12 @@ function draw_dead(state)
   if state.text != nil then
     local before = 0
     local text_pause = 2
+    local text_snd = 0
     if state.text.text_pause != nil then
       text_pause = state.text.text_pause
+    end
+    if state.text.text_snd != nil then
+      text_snd = state.text.text_snd
     end
     for i,text in pairs(state.text) do
       if type(text) == "string" and state.dialogue_t * text_speed_internal > before then
@@ -1085,7 +1479,7 @@ function draw_dead(state)
         local yy = 100 + i * 6
         --rectfill(0, yy, 128, yy + 4, 0)
         rectfill(0, yy-1, 128, yy + 5, 0)
-        draw_text(state.dialogue_t * text_speed_internal - before, text, 4, yy, 7, 0)
+        draw_text(state.dialogue_t * text_speed_internal - before, text, 4, yy, 7, text_snd)
         before += #text + text_pause
       end
     end
@@ -1627,6 +2021,25 @@ function make_noise_transition(target_state, col)
   }
 end
 
+function make_text_transition(target_state, text)
+  local s = {
+    t = 0,
+    updatefn = function(s)
+      if s.t > 120 then
+        return target_state
+      end
+
+      s.t += 1
+    end,
+    drawfn = function(s)
+      cls(0)
+      draw_text(s.t / 2, text, 40, 64, 7)
+    end,
+  }
+
+  return s
+end
+
 __gfx__
 00000000bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 00000000bb7777bbbbbbbbbbbbbbbbbbbbbbbbbbbb1111bbbb9999bbbb4444bbbbbbb8bbbbbb8bbbbbb8bbbbbbbb8bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
@@ -1644,22 +2057,22 @@ bbb3bbbbbb4444bbb432234b44444444b4adda4bbbddddbbbb2222bbbb6666bbb2dddd2bbbbbbbbb
 bbbb3bbbbb4444bbb433224bbb4bb4bbb4dd334bbbd4ddbbbb2222bbbbf66fbbb222222bbbbbbbbbbbbbbbbbb2b2bbbbbb7bb7bbbb7bbbbbbbbbb7bbbbbb2bbb
 bbbb3bbbbb44444bb444444bbb4bb4bbb444444bbd4dddbbbbfddfbbbbfeefbbbb2bb2bbbbbbbbbbbbbbbbbbb222bbbbbb7bb7bbbb7bbbbbbbbbb7bbbbbb2bbb
 bbbb3bbbbb44444bbbbbbbbbbb4bb4bbbbbbbbbbbddddbbbbbddddbbbbeeeebbbb2bb2bb222222222222222222222222bbbbbbbbbbbbbbbbbbbbbbbbbb222bbb
-bbbbbbbbbbbbbbbb55555555bbbbbbbbbbbbbbbbbbb000bbbbbbbbbbbbbbbbbbbbbbbbbb222222222222222222222b22bbbb2bbbbbbbbbbbbbbbbbbbbbbb22bb
-d4d4d444444d4d4dbbbb5bbbbbbbbbbbbbbbbbbbbb0040bbbbbbbbbbbbbbbbbbbbbb8bbb22222222222222222222bbb2bbbb2bbbbbbbbbbbbb22bbbbbbbb222b
-dddddbbbbbbdddddbbbb5bbbbbbbbbbbbbbbbbbbbbb44bbbbbbbbbbbbbbbbbbbbbb888bb22bbbbbbbbbbbbbbbbbbbbb2bbbb2bbbbbbb2b2bb222222bbbbb2bbb
-dddddbbbbbbddddd55555555bbbbbbbbbbbbbbbbbb3333bbbbbbbbbbbbbbbbbbbbb888bb22bbbbbbbbbbbbbbbbbbbbb2bbbb2bbbbb22222bbb2222bbbb22222b
-ddddbbbbbbbbddddb5bbbbbbbbbbbbbbbbbbbbbbbb3333bbbbbbbbbbbbbbbbbbbbb3bbbb22222222bbbbbbbb2b22b222bbbb2bbbb22222bbbbbb22bbbbbb2bbb
-dbdbbbbbbbbbbdddb5bbbbbbbbbbbbbbbbbbbbbbbb4333bbbbbbbbbbbbbbbbbbbbbb3bbb222222222222222222222222bbbb2bbbbb2222bbbbbbb2bbbbbb2bbb
-dddbbbbbbbbbbdddbbbbbbbbbbbbbbbbbbbbbbbbbb4555bbbbbbbbbbbbbbbbbbbbbb3bbb22bbbbbbbbbbbbbbbbbbbb22bbbb2bbbbbbbbbbbbbbbbbbbbbbb2bbb
+bbbbbbbbbbbbbbbb555555550bbbbbbbbbbbbbbbbbb000bbbbbbbbbbbbbbbbbbbbbbbbbb222222222222222222222b22bbbb2bbbbbbbbbbbbbbbbbbbbbbb22bb
+d4d4d444444d4d4dbbbb5bbbb0bb33b0bbbbbbbbbb0040bbbbbbbbbbbbbbbbbbbbbb8bbb22222222222222222222bbb2bbbb2bbbbbbbbbbbbb22bbbbbbbb222b
+dddddbbbbbbdddddbbbb5bbbbb03330bbbbbbbbbbbb44bbbbbbbbbbbbbbbbbbbbbb888bb22bbbbbbbbbbbbbbbbbbbbb2bbbb2bbbbbbb2b2bb222222bbbbb2bbb
+dddddbbbbbbddddd55555555bbb433bbbbbbbbbbbb3333bbbbbbbbbbbbbbbbbbbbb888bb22bbbbbbbbbbbbbbbbbbbbb2bbbb2bbbbb22222bbb2222bbbb22222b
+ddddbbbbbbbbddddb5bbbbbbbbb433bbbbbbbbbbbb3333bbbbbbbbbbbbbbbbbbbbb3bbbb22222222bbbbbbbb2b22b222bbbb2bbbb22222bbbbbb22bbbbbb2bbb
+dbdbbbbbbbbbbdddb5bbbbbbbbbb3bbbbbbbbbbbbb4333bbbbbbbbbbbbbbbbbbbbbb3bbb222222222222222222222222bbbb2bbbbb2222bbbbbbb2bbbbbb2bbb
+dddbbbbbbbbbbdddbbbbbbbbbbbb3bbbbbbbbbbbbb4555bbbbbbbbbbbbbbbbbbbbbb3bbb22bbbbbbbbbbbbbbbbbbbb22bbbb2bbbbbbbbbbbbbbbbbbbbbbb2bbb
 dddbbbbbbbbbbdddbbbbbbbbbbbbbbbbbbbbbbbbbb5555bbbbbbbbbbbbbbbbbbbbbb3bbb22b222222bbbbbbbbbbbbb22bbbb2bbbbbbbbbbbbbbbbbbbbb222bbb
-dddbbbbbbbbbbdddbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb22b2bbb22b22222bbbbbbb22bbbbbbbbbbbbbbbbbbbbbbbbbbbb222b
-dddbbbbbbbbbbdddbbbbbbbbbbbbbbbbbbbbbbbbbbb000bbbbbbbbbbbbbbbbbbbbbbbbbb22b22bb22b2bbb2bbbbbbb22bbbbbbbbbbbbbbbbbbbbbbbbbbbb2bbb
-dddbbbbbbbbbbdddbbbbbbbbbbbbbbbbbbbbbbbbbb0040bbbbbbbbbbbbbbbbbbbbbbbbbb22b22bbb2b2bbb2bbbbbbb22bbbbbbbbbbbbbbbbbbbbbbbbbb222bbb
-bddbbbbbbbbbbdddbbbbbbbbbbbbbbbbbbbbbbbbbbb44bbbbbbbbbbbbbbbbbbbbbbbbbbb22b22222222bbb2bbbbbbb22bbbbbbbbbbbbbbbbbbbbbbbbbbb2222b
-dddbbbbbbbbbbdddbbbbbbbbbbbbbbbbbbbbbbbbbb3333bbbbbbbbbbbbbbbbbbbbbbbbbb22bbbbbbbb2bbb2b22bb2222bbbbbbbbbbbbbbbbbbbbbbbbbbbb2bbb
-ddd4444444444d4dbbbbbbbbbbbbbbbbbbbbbbbbbb3333bbbbbbbbbbbbbbbbbbbbbbbbbb2222b2222222222222222222bbbbbbbbbbbbbbbbbbbbbbbb22222bbb
-ddd4444444444dddbbbbbbbbbbbbbbbbbbbbbbbbbb4555bbbbbbbbbbbbbbbbbbbbbbbbbbb2b222bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb22222
-dddbbbbbbbbbbdddbbbbbbbbbbbbbbbbbbbbbbbbbb5555bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb2bbb
+dddbbbbbbbbbbdddbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb22b2bbb22b22222bbbbbbb22bb111bbbbbbbbbbbbbbbbbbbbbbb222b
+dddbbbbbbbbbbdddbbbbbbbbbbbbbbbbbbbbbbbbbbb000bbbbbbbbbbbbbbbbbbbbbbbbbb22b22bb22b2bbb2bbbbbbb22b16111bbbbbbbbbbbbbbbbbbbbbb2bbb
+dddbbbbbbbbbbdddbbbbbbbbbbbbbbbbbbbbbbbbbb0040bbbbbbbbbbbbbbbbbbbbbbbbbb22b22bbb2b2bbb2bbbbbbb22b11117bbbbbbbbbbbbbbbbbbbb222bbb
+bddbbbbbbbbbbdddbbbbbbbbbbbbbbbbbbbbbbbbbbb44bbbbbbbbbbbbbbbbbbbbbbbbbbb22b22222222bbb2bbbbbbb22bb0707bbbbbbbbbbbbbbbbbbbbb2222b
+dddbbbbbbbbbbdddbbbbbbbbbbbbbbbbbbbbbbbbbb3333bbbbbbbbbbbbbbbbbbbbbbbbbb22bbbbbbbb2bbb2b22bb2222bb7777bbbbbbbbbbbbbbbbbbbbbb2bbb
+ddd4444444444d4dbbbbbbbbbbbbbbbbbbbbbbbbbb3333bbbbbbbbbbbbbbbbbbbbbbbbbb2222b2222222222222222222b777777bbbbbbbbbbbbbbbbb22222bbb
+ddd4444444444dddbbbbbbbbbbbbbbbbbbbbbbbbbb4555bbbbbbbbbbbbbbbbbbbbbbbbbbb2b222bbbbbbbbbbbbbbbbbbbb7bb7bbbbbbbbbbbbbbbbbbbbb22222
+dddbbbbbbbbbbdddbbbbbbbbbbbbbbbbbbbbbbbbbb5555bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb7bb7bbbbbbbbbbbbbbbbbbbbbb2bbb
 bbbbb77777777777777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb77bbbbbbbbbbbbbbbbbbbbbbbbbbbbbeeeeebbbbbbbbb
 bbbb7777777777777777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb770bbbbbbbbbbbbbbbbbbbbbbeeebbbbebbbebbbbbbbbb
 bbb777770000077777777777bbbbbbbbbbbbbbbbbbbbbbbbbbb111111bbbbbbbbbbbbbbbbbbbbbbbbbb77bbbbbbbbbbbbbeeeeeeeeeeeebbbbebbbebbbbbbbbb
@@ -1692,6 +2105,38 @@ bbbbbbb0fffaaaaaaff0000bfffaaaaaaff0000bbbbbbbbbb004444444000bbbbbbbbbbbbbbbbbbb
 bbbbbbb000ffffffa00bbbbb00ffffffa00bbbbbbbbbbbbbbb000444000bbbbbbbbbbbbbbbbbbbbbbbb7777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 bbbbbbbbbb00000000bbbbbbbb00000000bbbbbbbbbbbbbbbbbbb00000bbbbbbbbbbbbbbbbbbbbbbbbb7b7b7b7bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb7bbb7bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbb00000000000000000bbbbbbbbbb000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+bbbb0000000000000000000bbbbbbbbb000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+bbb000000000000000000000bbbbbbbb000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+bb0000000111100000000000bbbbbbbb000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+bb0000001111111111000000bbbbbbbb000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+bb0000001111111111100000bbbbbbbb000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+b00000011111111111110000bbbbbbbb000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+b000000dddd111111dd10000bbbbbbbb000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+b000001111dddddddd111000ddaaaaaa000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+b00000111111111111111100dddddddd000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+b00000100001111110000110000ddddd000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+b0000112220021120022211044004dd4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+b0000111111221122211111122444dd4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+b0000221072221122210721122244dd4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+b00012d100dd111127100d110022dddd000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+b00011122221111112222111444ddddd000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+b0001111111111d111111112bbbbbbbb000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+b0000211111111d111111112bbbbbbbb000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+b0000221111101d101111222bbbbbbbb000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+b0000222220001d100022210bbbbbbbb000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+bbb001122100112110022110bbbbbbbb000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+bbb0b0111100000000111100bbbbbbbb000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+bbbbb0000001200021000020bbbbbbbb000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+bbbbb0222011222221102220bbbbbbbb000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+bbbbb021111011d111111120ddd22222000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+bbbbb0011101111111011110dd220000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+bbbbbb001110000000111100ddd22000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+bbbbbbb01111122211111100dddd2222000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+bbbbbbb0111dddddd110000bdddaaaaa000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+bbbbbbb000111111d00bbbbb00dddddd000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+bbbbbbbbbb00000000bbbbbbbb000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __label__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -1831,7 +2276,7 @@ __sfx__
 010100001773017731171311a1311a0311a0310e03002030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 011a0000021511a0111a05126111321113e71102221023311a0211a0211a0211a0211a0211a0211a0241a02421011210512d11139111217110922109321090311d0201d0211d0211c0211c0211c0211c0211c021
 011800000e2101a2101a11026214263101a51026114261110e2101a2101a110262141a3101a51026114261112121021210211102d21421310215102d1142d1111c2101c2101c110282141c3101c5102811428111
-01020000186111a611346211d621376311d6311c6313262118621326211c621296211f611346111a6113c6111861132611346111d611286111a61124611326112661118611326111c61134611356112861132611
+00020000186111a611346211d621376311d6311c6313262118621326211c621296211f611346111a6113c6111861132611346111d611286111a61124611326112661118611326111c61134611356112861132611
 011500000504005040050400504005040050400504005040050400504005040050400504005040050400504005040050400504005040050400504005040050400504005040050400504005040050400504005040
 011500000204002040020400204002040020400204002040020400204002040020400204002040020400204004040040400404004040040400404004040040400404004040040400404004040040400404004040
 01150000117541175015754157501c7541c7521575415750117541175015754157501c7541c7501573415750177541775018754187501f7541f7521875418750177541775018754187501d7541d7501875418750
@@ -1846,6 +2291,7 @@ __sfx__
 01190020000000000000000000000000026710267542671000000000002d7102d7542d72500000000002d7102d7142d71500000000002d7102d7142d705000002d7002d700000000000000000000000000000000
 011000200061702617106111161113611056170461702612006170e61110611056170761704617026170c6110c611026170461705617196121a61200612006120261700617026170461704617116111061100617
 000100000315004050040500315005050040500405004150050500505000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000200002202021030130301304013040130401504013040130401404014040140401404015040150401503016030160301603016040160401604016040150401504014040150301504016040160501704016040
 __music__
 03 02034344
 04 06074344
