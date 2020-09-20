@@ -1007,37 +1007,124 @@ function init_sea(state)
     draw = function(o, state)
       local scale = 2
       local k = 128/scale
+
+      local fn_k = 0.12
+      local fn = function(x)
+        return sin(x) + fn_k * sqr(sin(2*x))
+      end
+      local fn_deriv = function(x)
+        return cos(x) + fn_k * 4 * sin(2*x)*cos(2*x)
+      end
+      local wave_fn = function(x)
+        return 3.5 * x + 17
+      end
+      local time_t = o.t / 450
+      local time_t_1 = o.t / 520 + 0.5
+      local wave0_b = fn(time_t)
+      local wave1_b = fn(time_t_1)
+      local wave0 = wave_fn(wave0_b)
+      local wave1 = 1.05 * wave_fn(wave1_b)
+      local wave0_d = fn_deriv(time_t)
+      local wave1_d = fn_deriv(time_t_1)
+      local min_wave = min(wave0, wave1)
+
+      local waveout = 0
+      local waveout_d = 0
+      local waveout_b = 0
+      if wave0 < wave1 then
+        waveout = wave0
+        waveout_d = wave0_d
+        waveout_b = wave0_b
+      else
+        waveout = wave1
+        waveout_d = wave1_d
+        waveout_b = wave1_b
+      end
+
       for x=0,k do
         for y=0,k do
           if rnd() > 0.9 and x*scale < 128 and y*scale < 128 then -- (32*flr(scale*x / 16) != 64) then
             if true then
+              local sampled = sample_precomp_perlin(o.precomp, x*scale, y*scale, o.t)
+              local height = 3 + 1*(sampled + rnd(0.5))
+
+              local diag = x / 8 + (1) * y / 4
+
+              local col = 2
+
+              if (height + diag) > min_wave then
+                col = 1
+              end
+
+              --if (abs(height + diag - wave0) < 0 + (0)) or abs(height + diag - wave1) < 0 then
+                --col = 7
+              --end
+
+              local cc = 1.2
+
+              local wave0_dd = height + diag - wave0
+              if wave0_d > 0 and wave0_dd < -(wave0_b - cc) and wave0_dd > 0 then
+                col = 7
+              end
+
+              local wave1_dd = height + diag - wave1
+              if wave1_d > 0 and wave1_dd < -(wave1_b - cc) and wave1_dd > 0 then
+                col = 7
+              end
+              --if wave1_d > 0 and abs(height + diag - wave1) < -(wave1_b - 1.2) then
+                --col = 7
+              --end
+
+              --if wave1_d > 0 and abs(height + diag - wave1) < -(wave1_b - 0.8) then
+                --col = 7
+              --end
+
+              local waveback_dd = height + diag - waveout
+              if waveout_d < 0 and waveback_dd < -(waveout_b - cc * 0.8) and waveback_dd > 0 then
+                col = 7
+                if rnd() < 0.05 then
+                  col = 1
+                end
+              end
+
+
+              if (col == 2 and rnd() < 0.7) then
+                -- chance to just continue to leave wet sand
+              else
+                rectfill(x*scale, y *scale, (x+1)*scale, (y+1)*scale, col)
+              end
+            end
+            if false then
               local col = 2
               local sampled = sample_precomp_perlin(o.precomp, x*scale, y*scale, o.t)
-              if sampled == nil then
-                printh("nil")
-                printh(x*scale)
-              end
               local height = 3 + 1*(sampled + rnd(0.5))
               local tide_t = o.t / 600
-              local diag = x / 8 + y / 4
-              local f_t_c = 0.15
+              local diag = x / 8 + (1) * y / 4
+              local f_t_c = 0.111
               local f_t = sin(tide_t) + f_t_c * sin(tide_t * 2)
               local f_t_deriv = cos(tide_t) + f_t_c * 2 * cos(tide_t * 2)
-              local tide = 5 * (1 + f_t) + 9
+              local tide = 3.5 * (1 + f_t) + 13
               local dir = f_t_deriv
-              local froth_h = height + diag + 0.3 * f_t_deriv * diag
+              local froth_h = (height + diag + 0.25) - (0.2 * f_t - 0.05) * diag + 0.5
               local sea_h = height + diag
               if (froth_h) > tide then
                 if (dir > 0) then
                   col = 7
                 else
-                  col = 8
+                  col = 7
                 end
                 if (sea_h) > tide then
                   col = 1
                 end
               elseif sea_h > tide then
                 col = 13
+              end
+
+              if (col == 7 and f_t_deriv < 0 and rnd() < 0.5) then
+                -- going out
+                if rnd() < 0.5 then
+                  col = 2
+                end
               end
 
               if (col == 7 and rnd() < 0.05) then
@@ -1049,13 +1136,6 @@ function init_sea(state)
               else
                 rectfill(x*scale, y *scale, (x+1)*scale, (y+1)*scale, col)
               end
-            end
-            if false then
-              col = 3 + 1*(sample_perlin(o.perlin, x*scale, y*scale, o.t) + rnd(0.5))
-              if (col < 0) then
-                col = 0
-              end
-              col = flr(col)
             end
             --rectfill(x*scale, y*scale, (x+1)*scale, (y+1)*scale, col)
           end
