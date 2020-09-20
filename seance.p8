@@ -993,7 +993,7 @@ function init_sea(state)
     add(points, {x = 64, y = i * 10})
    end
 
-  local perlin = make_perlin(4, 4)
+  local perlin = make_perlin(8, 8)
 
   local bgdraw = {
     x = 0,
@@ -1019,11 +1019,14 @@ function init_sea(state)
               end
               local height = 3 + 1*(sampled + rnd(0.5))
               local tide_t = o.t / 600
-              local tide = 5 * (1 + sin(tide_t)) + 9
               local diag = x / 8 + y / 4
+              local f_t_c = 0.15
+              local f_t = sin(tide_t) + f_t_c * sin(tide_t * 2)
+              local f_t_deriv = cos(tide_t) + f_t_c * 2 * cos(tide_t * 2)
+              local tide = 5 * (1 + f_t) + 9
+              local dir = f_t_deriv
+              local froth_h = height + diag + 0.3 * f_t_deriv * diag
               local sea_h = height + diag
-              local froth_h = height + diag + 0.3 * cos(tide_t) * diag
-              local dir = cos(tide_t)
               if (froth_h) > tide then
                 if (dir > 0) then
                   col = 7
@@ -1036,7 +1039,12 @@ function init_sea(state)
               elseif sea_h > tide then
                 col = 13
               end
-              if col == 2 and rnd() < 0.8 then
+
+              if (col == 7 and rnd() < 0.05) then
+                col = 1
+              end
+
+              if (col == 2 and rnd() < 0.8) then
                 -- chance to just continue to leave wet sand
               else
                 rectfill(x*scale, y *scale, (x+1)*scale, (y+1)*scale, col)
