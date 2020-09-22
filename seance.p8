@@ -995,13 +995,55 @@ function init_sea(state)
 
   local perlin = make_perlin(8, 8)
 
+  local waves = {}
+
+  for i = 0,1 do
+  --if true then
+    local wave = {
+      p = i,
+      state = 1,
+      forward_vel = 0.009 + 0.002 * i,
+      back_vel = 0.004 + 0.0004 * i,
+      vel = 0,
+      update = function(o)
+        if (o.p > 1) then 
+          o.state = -1
+        end
+
+        if (o.p < -1) then
+          o.state = 1
+        end
+
+        if o.state == 1 then
+          if o.p > 0.8 then
+            o.vel = o.forward_vel / 3
+          else
+            o.vel = o.forward_vel
+          end
+        elseif o.state == -1 then
+          if o.p > 0.8 then
+            o.vel = -o.back_vel / 3
+          else
+            o.vel = -o.back_vel
+          end
+        end
+
+        o.p += o.vel
+      end
+    }
+    add(waves, wave)
+  end
+
   local bgdraw = {
     x = 0,
     y = 0,
     t = 0,
     perlin = perlin,
     precomp = precomp_perlin(perlin),
+    waves = waves,
     update = function(o, state)
+      waves[1].update(waves[1])
+      waves[2].update(waves[2])
       o.t = o.t + 1
     end,
     draw = function(o, state)
@@ -1018,27 +1060,42 @@ function init_sea(state)
       local wave_fn = function(x)
         return 3.5 * x + 17
       end
-      local time_t = o.t / 450
-      local time_t_1 = o.t / 520 + 0.5
-      local wave0_b = fn(time_t)
-      local wave1_b = fn(time_t_1)
-      local wave0 = wave_fn(wave0_b)
-      local wave1 = 1.05 * wave_fn(wave1_b)
-      local wave0_d = fn_deriv(time_t)
-      local wave1_d = fn_deriv(time_t_1)
-      local min_wave = min(wave0, wave1)
 
-      local waveout = 0
-      local waveout_d = 0
-      local waveout_b = 0
-      if wave0 < wave1 then
-        waveout = wave0
-        waveout_d = wave0_d
-        waveout_b = wave0_b
+      --local time_t = o.t / 450
+      --local time_t_1 = o.t / 520 + 0.5
+      --local wave0_b = fn(time_t)
+      --local wave1_b = fn(time_t_1)
+      --local wave0 = wave_fn(wave0_b)
+      --local wave1 = 1.05 * wave_fn(wave1_b)
+      --local wave0_d = fn_deriv(time_t)
+      --local wave1_d = fn_deriv(time_t_1)
+      --local min_wave = min(wave0, wave1)
+
+      --local waveout = 0
+      --local waveout_d = 0
+      --local waveout_b = 0
+      --if wave0 < wave1 then
+      --  waveout = wave0
+      --  waveout_d = wave0_d
+      --  waveout_b = wave0_b
+      --else
+      --  waveout = wave1
+      --  waveout_d = wave1_d
+      --  waveout_b = wave1_b
+      --end
+
+      local wave_1 = wave_fn(-o.waves[1].p)
+      local wave_2 = wave_fn(-o.waves[2].p)
+
+      local min_wave = 0
+      local min_wave_obj = 0
+
+      if wave_1 < wave_2 then
+        min_wave = wave_1
+        min_wave_obj = o.waves[1]
       else
-        waveout = wave1
-        waveout_d = wave1_d
-        waveout_b = wave1_b
+        min_wave = wave_2
+        min_wave_obj = o.waves[2]
       end
 
       for x=0,k do
@@ -1046,46 +1103,77 @@ function init_sea(state)
           if rnd() > 0.9 and x*scale < 128 and y*scale < 128 then -- (32*flr(scale*x / 16) != 64) then
             if true then
               local sampled = sample_precomp_perlin(o.precomp, x*scale, y*scale, o.t)
+              --local sampled = sample_perlin(o.perlin, x*scale, y*scale, o.t)
               local height = 3 + 1*(sampled + rnd(0.5))
 
               local diag = x / 8 + (1) * y / 4
 
               local col = 2
+              local cc = 1.2
 
-              if (height + diag) > min_wave then
+              if (height + diag) > 10 and rnd() > 0.49 then
+                --col = 9
+              end
+
+              if (height + diag) > min_wave + 5 then
                 col = 1
+              elseif (height + diag) > min_wave then
+                col = 13
+              end
+
+              local w = o.waves[1]
+              local wave1_dd = height + diag - wave_1
+              if w.vel > 0 and wave1_dd < -((- w.p) - cc) and wave1_dd > 0 then
+                col = 7
+              end
+
+              w = o.waves[2]
+              local wave2_dd = height + diag - wave_2
+              if w.vel > 0 and wave2_dd < -((- w.p) - cc) and wave2_dd > 0 then
+                col = 7
+              end
+
+              local waveback_dd = height + diag - min_wave
+              if min_wave_obj.vel < 0 and waveback_dd < -(-min_wave_obj.p - cc * 0.8) and waveback_dd > 0 then
+                col = 7
+                if rnd() < 0.05 then
+                  col = 1
+                end
+                if rnd() < 0.05 then
+                  --col = 13
+                end
               end
 
               --if (abs(height + diag - wave0) < 0 + (0)) or abs(height + diag - wave1) < 0 then
                 --col = 7
               --end
 
-              local cc = 1.2
+              --local cc = 1.2
 
-              local wave0_dd = height + diag - wave0
-              if wave0_d > 0 and wave0_dd < -(wave0_b - cc) and wave0_dd > 0 then
-                col = 7
-              end
-
-              local wave1_dd = height + diag - wave1
-              if wave1_d > 0 and wave1_dd < -(wave1_b - cc) and wave1_dd > 0 then
-                col = 7
-              end
-              --if wave1_d > 0 and abs(height + diag - wave1) < -(wave1_b - 1.2) then
-                --col = 7
+              --local wave0_dd = height + diag - wave0
+              --if wave0_d > 0 and wave0_dd < -(wave0_b - cc) and wave0_dd > 0 then
+              --  col = 7
               --end
 
-              --if wave1_d > 0 and abs(height + diag - wave1) < -(wave1_b - 0.8) then
-                --col = 7
+              --local wave1_dd = height + diag - wave1
+              --if wave1_d > 0 and wave1_dd < -(wave1_b - cc) and wave1_dd > 0 then
+              --  col = 7
               --end
+              ----if wave1_d > 0 and abs(height + diag - wave1) < -(wave1_b - 1.2) then
+              --  --col = 7
+              ----end
 
-              local waveback_dd = height + diag - waveout
-              if waveout_d < 0 and waveback_dd < -(waveout_b - cc * 0.8) and waveback_dd > 0 then
-                col = 7
-                if rnd() < 0.05 then
-                  col = 1
-                end
-              end
+              ----if wave1_d > 0 and abs(height + diag - wave1) < -(wave1_b - 0.8) then
+              --  --col = 7
+              ----end
+
+              --local waveback_dd = height + diag - waveout
+              --if waveout_d < 0 and waveback_dd < -(waveout_b - cc * 0.8) and waveback_dd > 0 then
+              --  col = 7
+              --  if rnd() < 0.05 then
+              --    col = 1
+              --  end
+              --end
 
 
               if (col == 2 and rnd() < 0.7) then
