@@ -18,7 +18,6 @@ __lua__
 --
 -- crime never pays
 --
-
 -- Go to sleep
 -- walk to hub
 -- each hub character says different things
@@ -48,6 +47,7 @@ function _init()
   global_state = init_dead()
   --init_bedroom(global_state)
   init_sea(global_state)
+  --init_noise(global_state)
 
   --global_state = init_talking()
 
@@ -945,14 +945,16 @@ function sample_perlin(perlin, x, y, t)
     return norm_yo
   end
 
-  local interp_up = avgsmoothstep(ul, ur, norm_xo)
-  local interp_down = avgsmoothstep(dl, dr, norm_xo)
+  local fn = avgsmoothstep
+  local interp_up = fn(ul, ur, norm_xo)
+  local interp_down = fn(dl, dr, norm_xo)
+  return 0.15*fn(interp_up, interp_down, norm_yo)
+
   --if norm_yo > 0.5 then
   --  return 0.15 * interp_down
   --else
   --  return 0.15 * interp_up
   --end
-  return 0.15*avgsmoothstep(interp_up, interp_down, norm_yo)
   --return 5*g_ul
   --return 5*perlin_lerp(interp_up, interp_down, norm_yo)
   --return norm_xo
@@ -980,8 +982,63 @@ function sample_precomp_perlin(pre, x, y, t)
   return pre.points[1 + (pre.w) * y + x]
 end
 
-function init_sea(state)
+function init_noise(state)
   cls(0)
+  state.disable_cls = true
+  state.text_from_objs = true
+  state.text = { "chapter 13" }
+  -- "can we skip this one"
+  -- jokerama 6
+
+  -- bad comedian
+  -- console players be like
+      -- take control of player stomp about
+
+  add(state.dialogue, ".")
+  add(state.dialogue, ".")
+
+  local perlin = make_perlin(4, 4)
+
+  local bgdraw = {
+    x = 0,
+    y = 0,
+    t = 0,
+    perlin = perlin,
+    precomp = precomp_perlin(perlin),
+    waves = waves,
+    update = function(o, state)
+      state.dialogue_t = o.t
+      o.t = o.t + 1
+    end,
+    draw = function(o, state)
+      local scale = 2
+      local k = 128/scale
+      for x=0,k do
+        for y=0,k do
+          local xx = x*scale
+          local yy = y*scale
+          if rnd() > 0.95 and xx < 128 and yy < 128 then
+            col = 1
+            local dist = sqrt(sqr(xx - state.player.x) + sqr(yy - state.player.y))
+            local sampled1 = sample_precomp_perlin(o.precomp, x*scale, y*scale, o.t)
+            if dist*8 + sampled1*50 < 128 then -- or rnd() < dist2*abs(sampled1) / 1000 then
+
+              col = sampled1
+            end
+            rectfill(x*scale, y *scale, (x+1)*scale, (y+1)*scale, col)
+          end
+        end
+      end
+      print(stat(7), 10, 10, 7)
+    end,
+   }
+
+  add(state.objects, bgdraw)
+  add(state.drawables, bgdraw)
+end
+
+function init_sea(state)
+  cls(2)
   state.disable_cls = true
 
   add(state.dialogue, ".")
@@ -993,18 +1050,18 @@ function init_sea(state)
     add(points, {x = 64, y = i * 10})
    end
 
-  local perlin = make_perlin(8, 8)
-
   local waves = {}
 
   for i = 0,1 do
   --if true then
+    local perlin = make_perlin(5, 5)
     local wave = {
       p = i,
       state = 1,
       forward_vel = 0.009 + 0.002 * i,
-      back_vel = 0.004 + 0.0004 * i,
+      back_vel = 0.005 + 0.0004 * i,
       vel = 0,
+      precomp = precomp_perlin(perlin),
       update = function(o)
         if (o.p > 1) then 
           o.state = -1
@@ -1016,13 +1073,13 @@ function init_sea(state)
 
         if o.state == 1 then
           if o.p > 0.8 then
-            o.vel = o.forward_vel / 3
+            o.vel = o.forward_vel / 2
           else
             o.vel = o.forward_vel
           end
         elseif o.state == -1 then
           if o.p > 0.8 then
-            o.vel = -o.back_vel / 3
+            o.vel = -o.back_vel / 2
           else
             o.vel = -o.back_vel
           end
@@ -1038,8 +1095,8 @@ function init_sea(state)
     x = 0,
     y = 0,
     t = 0,
-    perlin = perlin,
-    precomp = precomp_perlin(perlin),
+    --perlin = perlin,
+    --precomp = precomp_perlin(perlin),
     waves = waves,
     update = function(o, state)
       waves[1].update(waves[1])
@@ -1089,60 +1146,95 @@ function init_sea(state)
 
       local min_wave = 0
       local min_wave_obj = 0
+      local min_wave_id = 0
 
       if wave_1 < wave_2 then
         min_wave = wave_1
         min_wave_obj = o.waves[1]
+        min_wave_id = 1
       else
         min_wave = wave_2
         min_wave_obj = o.waves[2]
+        min_wave_id = 2
       end
 
       for x=0,k do
         for y=0,k do
-          if rnd() > 0.9 and x*scale < 128 and y*scale < 128 then -- (32*flr(scale*x / 16) != 64) then
+          if rnd() > 0.95 and x*scale < 128 and y*scale < 128 then -- (32*flr(scale*x / 16) != 64) then
             if true then
-              local sampled = sample_precomp_perlin(o.precomp, x*scale, y*scale, o.t)
               --local sampled = sample_perlin(o.perlin, x*scale, y*scale, o.t)
-              local height = 3 + 1*(sampled + rnd(0.5))
+              local sampled1 = sample_precomp_perlin(o.waves[1].precomp, x*scale, y*scale, o.t)
+              local sampled2 = sample_precomp_perlin(o.waves[2].precomp, x*scale, y*scale, o.t)
+              local height1 = 3 + 1*(sampled1 + rnd(0.5))
+              local height2 = 3 + 1*(sampled2 + rnd(0.5))
 
               local diag = x / 8 + (1) * y / 4
 
               local col = 2
               local cc = 1.2
 
-              if (height + diag) > 10 and rnd() > 0.49 then
+              --if (height + diag) > 10 and rnd() > 0.49 then
                 --col = 9
+              --end
+
+              if (height1 + diag) > wave_1 or (height2 + diag) > wave_2 then
+                col = 1
               end
 
-              if (height + diag) > min_wave + 5 then
-                col = 1
-              elseif (height + diag) > min_wave then
-                col = 13
-              end
+              --elseif (height + diag) > min_wave then
+                --col = 13
+              --end
 
               local w = o.waves[1]
-              local wave1_dd = height + diag - wave_1
+              local wave1_dd = height1 + diag - wave_1
               if w.vel > 0 and wave1_dd < -((- w.p) - cc) and wave1_dd > 0 then
                 col = 7
               end
 
               w = o.waves[2]
-              local wave2_dd = height + diag - wave_2
+              local wave2_dd = height2 + diag - wave_2
               if w.vel > 0 and wave2_dd < -((- w.p) - cc) and wave2_dd > 0 then
                 col = 7
               end
 
-              local waveback_dd = height + diag - min_wave
-              if min_wave_obj.vel < 0 and waveback_dd < -(-min_wave_obj.p - cc * 0.8) and waveback_dd > 0 then
-                col = 7
-                if rnd() < 0.05 then
-                  col = 1
+              local wetsand_col = 13
+
+              
+              local waveback_1_dd = height1 + diag - min_wave
+              if col == 1 and o.waves[1].vel < 0 and waveback_1_dd < -(-o.waves[1].p - cc * 0.8) and waveback_1_dd > 0 then
+                col = wetsand_col
+                --col = 13
+                if rnd() < 0.5 then
+                  col = 7
                 end
                 if rnd() < 0.05 then
-                  --col = 13
+                  col = wetsand_col
                 end
               end
+
+              local waveback_2_dd = height2 + diag - min_wave
+              if col == 1 and o.waves[2].vel < 0 and waveback_2_dd < -(-o.waves[2].p - cc * 0.8) and waveback_2_dd > 0 then
+                col = wetsand_col
+                --col = 13
+                if rnd() < 0.5 then
+                  col = 7
+                end
+                if rnd() < 0.05 then
+                  col = wetsand_col
+                end
+              end
+
+
+              --local waveback_dd = max(height1 + diag - min_wave, height2 + diag - min_wave)
+              --if min_wave_obj.vel < 0 and waveback_dd < -(-min_wave_obj.p - cc * 0.8) and waveback_dd > 0 then
+              --  col = 7
+              --  if rnd() < 0.05 then
+              --    --col = 1
+              --  end
+              --  if rnd() < 0.05 then
+              --    --col = 13
+              --  end
+              --end
 
               --if (abs(height + diag - wave0) < 0 + (0)) or abs(height + diag - wave1) < 0 then
                 --col = 7
@@ -1176,7 +1268,7 @@ function init_sea(state)
               --end
 
 
-              if (col == 2 and rnd() < 0.7) then
+              if (col == 2 and rnd() < 0.95) then
                 -- chance to just continue to leave wet sand
               else
                 rectfill(x*scale, y *scale, (x+1)*scale, (y+1)*scale, col)
@@ -1554,8 +1646,10 @@ function update_dead(state)
     end
   end
 
-  state.dialogue_t = dialogue_t
-  state.text = text
+  if (state.text_from_objs == nil) then
+    state.dialogue_t = dialogue_t
+    state.text = text
+  end
 
   state.filter_scene = true
   state.filter_pat = 0b0000000000000000.1
