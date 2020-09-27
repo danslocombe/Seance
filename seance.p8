@@ -45,8 +45,8 @@ function _init()
   cls(0)
 
   global_state = init_dead()
-  --init_bedroom(global_state)
-  init_sea(global_state)
+  init_bedroom(global_state)
+  --init_sea(global_state)
   --init_noise(global_state)
 
   --global_state = init_talking()
@@ -1039,6 +1039,7 @@ end
 
 function init_sea(state)
   cls(2)
+
   state.disable_cls = true
 
   add(state.dialogue, ".")
@@ -1158,6 +1159,17 @@ function init_sea(state)
         min_wave_id = 2
       end
 
+      --local sand = 9
+      --local sand_wet = 4
+
+      --local sand = 15
+      --local sand_wet = 2
+      --local sand_wet = 12
+      local sand = 2
+      local sand_wet = 13
+      local froth = 7
+      local sea = 1
+
       for x=0,k do
         for y=0,k do
           if rnd() > 0.95 and x*scale < 128 and y*scale < 128 then -- (32*flr(scale*x / 16) != 64) then
@@ -1168,9 +1180,22 @@ function init_sea(state)
               local height1 = 3 + 1*(sampled1 + rnd(0.5))
               local height2 = 3 + 1*(sampled2 + rnd(0.5))
 
+              local height_min = 0
+              if (min_wave_id == 1) then
+                height_min = height1
+              else
+                height_min = height2
+              end
+
               local diag = x / 8 + (1) * y / 4
 
-              local col = 2
+              local col = sand
+
+
+              if (diag + height_min > 13 and min_wave) then
+                col = sand_wet
+              end
+
               local cc = 1.2
 
               --if (height + diag) > 10 and rnd() > 0.49 then
@@ -1178,7 +1203,7 @@ function init_sea(state)
               --end
 
               if (height1 + diag) > wave_1 or (height2 + diag) > wave_2 then
-                col = 1
+                col = sea
               end
 
               --elseif (height + diag) > min_wave then
@@ -1188,39 +1213,37 @@ function init_sea(state)
               local w = o.waves[1]
               local wave1_dd = height1 + diag - wave_1
               if w.vel > 0 and wave1_dd < -((- w.p) - cc) and wave1_dd > 0 then
-                col = 7
+                col = froth
               end
 
               w = o.waves[2]
               local wave2_dd = height2 + diag - wave_2
               if w.vel > 0 and wave2_dd < -((- w.p) - cc) and wave2_dd > 0 then
-                col = 7
+                col = froth
               end
-
-              local wetsand_col = 13
 
               
               local waveback_1_dd = height1 + diag - min_wave
-              if col == 1 and o.waves[1].vel < 0 and waveback_1_dd < -(-o.waves[1].p - cc * 0.8) and waveback_1_dd > 0 then
-                col = wetsand_col
+              if col == sea and o.waves[1].vel < 0 and waveback_1_dd < -(-o.waves[1].p - cc * 0.8) and waveback_1_dd > 0 then
+                col = sand_wet
                 --col = 13
                 if rnd() < 0.5 then
-                  col = 7
+                  col = froth
                 end
                 if rnd() < 0.05 then
-                  col = wetsand_col
+                  col = sand_wet
                 end
               end
 
               local waveback_2_dd = height2 + diag - min_wave
-              if col == 1 and o.waves[2].vel < 0 and waveback_2_dd < -(-o.waves[2].p - cc * 0.8) and waveback_2_dd > 0 then
-                col = wetsand_col
+              if col == sea and o.waves[2].vel < 0 and waveback_2_dd < -(-o.waves[2].p - cc * 0.8) and waveback_2_dd > 0 then
+                col = sand_wet
                 --col = 13
                 if rnd() < 0.5 then
-                  col = 7
+                  col = froth
                 end
                 if rnd() < 0.05 then
-                  col = wetsand_col
+                  col = sand_wet
                 end
               end
 
@@ -1268,7 +1291,7 @@ function init_sea(state)
               --end
 
 
-              if (col == 2 and rnd() < 0.95) then
+              if (col == sand and rnd() < 0.95) then
                 -- chance to just continue to leave wet sand
               else
                 rectfill(x*scale, y *scale, (x+1)*scale, (y+1)*scale, col)
