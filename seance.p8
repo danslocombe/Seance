@@ -45,8 +45,8 @@ function _init()
   cls(0)
 
   global_state = init_dead()
-  init_bedroom(global_state)
-  --init_sea(global_state)
+  --init_bedroom(global_state)
+  init_sea(global_state)
   --init_noise(global_state)
 
   --global_state = init_talking()
@@ -1170,29 +1170,43 @@ function init_sea(state)
       local froth = 7
       local sea = 1
 
+      local player_height = sample_precomp_perlin(o.waves[1].precomp, flr(state.player.x), flr(state.player.y), o.t) + state.player.x / 8 + state.player.y / 4
+
       for x=0,k do
         for y=0,k do
           if rnd() > 0.95 and x*scale < 128 and y*scale < 128 then -- (32*flr(scale*x / 16) != 64) then
             if true then
+              local sampled1 = sample_precomp_perlin(o.waves[1].precomp, x*scale, y*scale, o.t)
+              local diag1 = x / 8 + (1) * y / 4
+              local col = sampled1 + diag1
+              if abs(player_height - col) > 1 then
+                col = 2
+              end
+              rectfill(x*scale, y *scale, (x+1)*scale, (y+1)*scale, col)
+            end
+            if false then
               --local sampled = sample_perlin(o.perlin, x*scale, y*scale, o.t)
               local sampled1 = sample_precomp_perlin(o.waves[1].precomp, x*scale, y*scale, o.t)
               local sampled2 = sample_precomp_perlin(o.waves[2].precomp, x*scale, y*scale, o.t)
               local height1 = 3 + 1*(sampled1 + rnd(0.5))
               local height2 = 3 + 1*(sampled2 + rnd(0.5))
+              local diag1 = x / 8 + (1) * y / 4
+              local diag2 = x / 8 + (1.5) * y / 4
 
               local height_min = 0
+              local diag_min = 0
               if (min_wave_id == 1) then
                 height_min = height1
+                diag_min = diag1
               else
                 height_min = height2
+                diag_min = diag2
               end
-
-              local diag = x / 8 + (1) * y / 4
 
               local col = sand
 
 
-              if (diag + height_min > 13 and min_wave) then
+              if (diag_min + height_min > 13 and min_wave) then
                 col = sand_wet
               end
 
@@ -1202,7 +1216,7 @@ function init_sea(state)
                 --col = 9
               --end
 
-              if (height1 + diag) > wave_1 or (height2 + diag) > wave_2 then
+              if (height1 + diag1) > wave_1 or (height2 + diag2) > wave_2 then
                 col = sea
               end
 
@@ -1211,85 +1225,42 @@ function init_sea(state)
               --end
 
               local w = o.waves[1]
-              local wave1_dd = height1 + diag - wave_1
+              local wave1_dd = height1 + diag1 - wave_1
               if w.vel > 0 and wave1_dd < -((- w.p) - cc) and wave1_dd > 0 then
                 col = froth
               end
 
               w = o.waves[2]
-              local wave2_dd = height2 + diag - wave_2
+              local wave2_dd = height2 + diag2 - wave_2
               if w.vel > 0 and wave2_dd < -((- w.p) - cc) and wave2_dd > 0 then
                 col = froth
               end
 
               
-              local waveback_1_dd = height1 + diag - min_wave
-              if col == sea and o.waves[1].vel < 0 and waveback_1_dd < -(-o.waves[1].p - cc * 0.8) and waveback_1_dd > 0 then
-                col = sand_wet
-                --col = 13
-                if rnd() < 0.5 then
-                  col = froth
-                end
-                if rnd() < 0.05 then
-                  col = sand_wet
-                end
-              end
-
-              local waveback_2_dd = height2 + diag - min_wave
-              if col == sea and o.waves[2].vel < 0 and waveback_2_dd < -(-o.waves[2].p - cc * 0.8) and waveback_2_dd > 0 then
-                col = sand_wet
-                --col = 13
-                if rnd() < 0.5 then
-                  col = froth
-                end
-                if rnd() < 0.05 then
-                  col = sand_wet
-                end
-              end
-
-
-              --local waveback_dd = max(height1 + diag - min_wave, height2 + diag - min_wave)
-              --if min_wave_obj.vel < 0 and waveback_dd < -(-min_wave_obj.p - cc * 0.8) and waveback_dd > 0 then
-              --  col = 7
-              --  if rnd() < 0.05 then
-              --    --col = 1
+              -- todo handle
+              --local waveback_1_dd = height1 + diag - min_wave
+              --if col == sea and o.waves[1].vel < 0 and waveback_1_dd < -(-o.waves[1].p - cc * 0.8) and waveback_1_dd > 0 then
+              --  col = sand_wet
+              --  --col = 13
+              --  if rnd() < 0.9 then
+              --    col = froth
               --  end
               --  if rnd() < 0.05 then
-              --    --col = 13
+              --    col = sand_wet
               --  end
               --end
 
-              --if (abs(height + diag - wave0) < 0 + (0)) or abs(height + diag - wave1) < 0 then
-                --col = 7
-              --end
-
-              --local cc = 1.2
-
-              --local wave0_dd = height + diag - wave0
-              --if wave0_d > 0 and wave0_dd < -(wave0_b - cc) and wave0_dd > 0 then
-              --  col = 7
-              --end
-
-              --local wave1_dd = height + diag - wave1
-              --if wave1_d > 0 and wave1_dd < -(wave1_b - cc) and wave1_dd > 0 then
-              --  col = 7
-              --end
-              ----if wave1_d > 0 and abs(height + diag - wave1) < -(wave1_b - 1.2) then
-              --  --col = 7
-              ----end
-
-              ----if wave1_d > 0 and abs(height + diag - wave1) < -(wave1_b - 0.8) then
-              --  --col = 7
-              ----end
-
-              --local waveback_dd = height + diag - waveout
-              --if waveout_d < 0 and waveback_dd < -(waveout_b - cc * 0.8) and waveback_dd > 0 then
-              --  col = 7
+              --local waveback_2_dd = height2 + diag - min_wave
+              --if col == sea and o.waves[2].vel < 0 and waveback_2_dd < -(-o.waves[2].p - cc * 0.8) and waveback_2_dd > 0 then
+              --  col = sand_wet
+              --  --col = 13
+              --  if rnd() < 0.9 then
+              --    col = froth
+              --  end
               --  if rnd() < 0.05 then
-              --    col = 1
+              --    col = sand_wet
               --  end
               --end
-
 
               if (col == sand and rnd() < 0.95) then
                 -- chance to just continue to leave wet sand
