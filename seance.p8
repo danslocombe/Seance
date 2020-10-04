@@ -46,7 +46,8 @@ function _init()
 
   global_state = init_dead()
   --init_bedroom(global_state)
-  init_sea(global_state)
+  init_rainbow(global_state)
+  --init_sea(global_state)
   --init_noise(global_state)
 
   --global_state = init_talking()
@@ -1037,8 +1038,82 @@ function init_noise(state)
   add(state.drawables, bgdraw)
 end
 
+function init_rainbow(state)
+  cls(2)
+  state.disable_cls = true
+
+  add(state.dialogue, ".")
+  add(state.dialogue, ".")
+
+  local waves = {}
+
+  local perlin = make_perlin(5, 5)
+  local precomp = precomp_perlin(perlin)
+
+  local bgdraw = {
+    x = 0,
+    y = 0,
+    t = 0,
+    perlin = perlin,
+    precomp = precomp_perlin(perlin),
+    waves = waves,
+    update = function(o, state)
+      o.t = o.t + 1
+    end,
+    draw = function(o, state)
+      local scale = 2 --+ o.t / 1000
+      local prob = 0.95 -- o.t / 1000
+      local k = 128/scale
+
+      local consts = 122.5 / (16 * 4 * 2)
+
+      local diagfunstrobe = function(x, y, t)
+        local sinsin = sin(t * 0.03125 / 2)
+        if (sinsin > 0) then
+          return 10 * sin(x / 50 + y / 50) * sinsin
+        else
+          return 10 * sin(x / 50 - y / 50) * sinsin
+        end
+      end
+
+      local diagfunfov = function(x, y, t)
+        return 0.36 * (x / 8 + y / 4) --* sqr(sin(t / 10000))
+        --return 3* sin(y / 50)
+        --return sqr(x/8 + y / 4) / 80
+      end
+
+      local diagfun = diagfunfov
+
+      local diagplayer = diagfun(state.player.x, state.player.y, o.t)
+      local player_height = sample_precomp_perlin(o.precomp, flr(state.player.x), flr(state.player.y), o.t) + diagplayer
+
+      for x=0,k do
+        for y=0,k do
+          if rnd() > prob and x*scale < 128 and y*scale < 128 then
+            local sampled1 = sample_precomp_perlin(o.precomp, flr(x*scale), flr(y*scale), o.t)
+            local diag1 = diagfun(x*scale, y*scale, o.t)
+            local col = sampled1 + diag1
+            if abs(player_height - col) > 2.5 then
+              col = 2
+            end
+            rectfill(x*scale, y *scale, (x+1)*scale, (y+1)*scale, col)
+          end
+        end
+      end
+      print(stat(7), 10, 10, 7)
+      print(player_height, 10, 20, 7)
+    end,
+  }
+
+  --music(6)
+
+  add(state.objects, bgdraw)
+  add(state.drawables, bgdraw)
+end
+
 function init_sea(state)
   cls(2)
+  --music(1)
 
   state.disable_cls = true
 
@@ -1105,7 +1180,8 @@ function init_sea(state)
       o.t = o.t + 1
     end,
     draw = function(o, state)
-      local scale = 2
+      local scale = 2 --+ o.t / 1000
+      local prob = 0.95 -- o.t / 1000
       local k = 128/scale
 
       local fn_k = 0.12
@@ -1170,21 +1246,32 @@ function init_sea(state)
       local froth = 7
       local sea = 1
 
-      local player_height = sample_precomp_perlin(o.waves[1].precomp, flr(state.player.x), flr(state.player.y), o.t) + state.player.x / 8 + state.player.y / 4
+      local consts = 122.5 / (16 * 4 * 2)
+
+      local diagfunstrobe = function(x, y, t)
+        local sinsin = sin(t * 0.03125 / 2)
+        if (sinsin > 0) then
+          return 10 * sin(x / 50 + y / 50) * sinsin
+        else
+          return 10 * sin(x / 50 - y / 50) * sinsin
+        end
+      end
+
+      local diagfunfov = function(x, y, t)
+        return 0.36 * (x / 8 + y / 4) --* sqr(sin(t / 10000))
+        --return 3* sin(y / 50)
+        --return sqr(x/8 + y / 4) / 80
+      end
+
+      local diagfun = diagfunfov
+
+      local diagplayer = diagfun(state.player.x, state.player.y, o.t)
+      local player_height = sample_precomp_perlin(o.waves[1].precomp, flr(state.player.x), flr(state.player.y), o.t) + diagplayer
 
       for x=0,k do
         for y=0,k do
-          if rnd() > 0.95 and x*scale < 128 and y*scale < 128 then -- (32*flr(scale*x / 16) != 64) then
+          if rnd() > prob and x*scale < 128 and y*scale < 128 then -- (32*flr(scale*x / 16) != 64) then
             if true then
-              local sampled1 = sample_precomp_perlin(o.waves[1].precomp, x*scale, y*scale, o.t)
-              local diag1 = x / 8 + (1) * y / 4
-              local col = sampled1 + diag1
-              if abs(player_height - col) > 1 then
-                col = 2
-              end
-              rectfill(x*scale, y *scale, (x+1)*scale, (y+1)*scale, col)
-            end
-            if false then
               --local sampled = sample_perlin(o.perlin, x*scale, y*scale, o.t)
               local sampled1 = sample_precomp_perlin(o.waves[1].precomp, x*scale, y*scale, o.t)
               local sampled2 = sample_precomp_perlin(o.waves[2].precomp, x*scale, y*scale, o.t)
@@ -1235,32 +1322,6 @@ function init_sea(state)
               if w.vel > 0 and wave2_dd < -((- w.p) - cc) and wave2_dd > 0 then
                 col = froth
               end
-
-              
-              -- todo handle
-              --local waveback_1_dd = height1 + diag - min_wave
-              --if col == sea and o.waves[1].vel < 0 and waveback_1_dd < -(-o.waves[1].p - cc * 0.8) and waveback_1_dd > 0 then
-              --  col = sand_wet
-              --  --col = 13
-              --  if rnd() < 0.9 then
-              --    col = froth
-              --  end
-              --  if rnd() < 0.05 then
-              --    col = sand_wet
-              --  end
-              --end
-
-              --local waveback_2_dd = height2 + diag - min_wave
-              --if col == sea and o.waves[2].vel < 0 and waveback_2_dd < -(-o.waves[2].p - cc * 0.8) and waveback_2_dd > 0 then
-              --  col = sand_wet
-              --  --col = 13
-              --  if rnd() < 0.9 then
-              --    col = froth
-              --  end
-              --  if rnd() < 0.05 then
-              --    col = sand_wet
-              --  end
-              --end
 
               if (col == sand and rnd() < 0.95) then
                 -- chance to just continue to leave wet sand
@@ -1345,73 +1406,11 @@ function init_sea(state)
         end
       end
       print(stat(7), 10, 10, 7)
+      print(player_height, 10, 20, 7)
     end,
   }
 
-  add(state.objects, bgdraw)
-  add(state.drawables, bgdraw)
-end
-
-function init_sea2(state)
-  cls(0)
-
-  add(state.dialogue, ".")
-  add(state.dialogue, ".")
-
-  points = {}
-  for i=0,10 do
-    add(points, {x = 64, y = i * 10})
-   end
-
-  local bgdraw = {
-    x = 0,
-    y = 0,
-    points = points,
-    update = function(o, state)
-      -- o.points[1].y+=1
-    end,
-    draw = function(o, state)
-      local scale = 4
-      local k = 128/scale
-      for x=0,k do
-        for y=0,k do
-          rectfill(x*scale, y*scale, (x+1)*scale, (y+1)*scale, x)
-        end
-      end
-      local prevx = 0
-      local prevy = 0
-      local first = true
-      for i,p in pairs(o.points) do
-
-        if (not first) then
-          line(p.x, p.y, prevx, prevy, 9)
-        end
-
-        circ(p.x, p.y, 2, 7)
-
-        prevx = p.x
-        prevy = p.y
-        first = false
-      end
-
-      print(stat(7), 10, 10, 7)
-
-      --cls(0)
-      --local col = 1 + flr(state.t / 64) % 2
-      --col = 1
-      --rectfill(64, 64, 128,128, 2)
-      --local pat = fill_bits(flr(8*(1 + sin(state.t / 400))))
-      --fillp(pat)
-      --rectfill(64, 64, 128, 128, col)
-      ----circfill(64, 64, 50, col)
-      --fillp()
-      ----dump_noise(0.04)
-
-      --circfill(64, 64, 13, 1)
-      --circfill(58, 64, 11, 1)
-      --circfill(72, 64, 11, 1)
-    end,
-  }
+  --music(6)
 
   add(state.objects, bgdraw)
   add(state.drawables, bgdraw)
@@ -2556,6 +2555,8 @@ __sfx__
 011000200061702617106111161113611056170461702612006170e61110611056170761704617026170c6110c611026170461705617196121a61200612006120261700617026170461704617116111061100617
 000100000315004050040500315005050040500405004150050500505000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 000200002202021030130301304013040130401504013040130401404014040140401404015040150401503016030160301603016040160401604016040150401504014040150301504016040160501704016040
+011000000e3530223002230022300e35300000262301a2320e3531a2301a2301a2300e3531723006232062320e3530223002230022300e3530000002230022300e3530000000000000000e353000000e4531a453
+011000000e3530220002200022000e35300000262001a2020e3531a2001a2001a2000e3531720006202062020e3530220002200022000e3530000002200022000e3530000000000000000e353000000e4531a453
 __music__
 03 02034344
 04 06074344
@@ -2563,5 +2564,5 @@ __music__
 02 0a4a0b4c
 03 4f0e5244
 03 4914154c
-02 4a524b4c
+03 19524b4c
 
