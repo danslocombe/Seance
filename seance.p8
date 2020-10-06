@@ -52,8 +52,10 @@ function _init()
 
   global_state = init_dead()
   --init_bedroom(global_state)
-  --init_rainbow(global_state)
   init_sea(global_state)
+  --global_state = make_perlin_sample_trans(global_state)
+  --init_rainbow(global_state)
+  --init_sea(global_state)
   --init_noise(global_state)
 
   --global_state = init_talking()
@@ -451,6 +453,7 @@ function init_house(state)
   local house_x = 54
   local house_y = 44
 
+
   state.player.x = house_x + 4
   state.player.y = house_y + 8
 
@@ -567,7 +570,8 @@ function init_mountain(state)
     init = function()
       -- transition
       local s = init_dead()
-      init_crossroads(s)
+      init_sea(s)
+      --init_crossroads(s)
       return make_noise_transition(s)
     end,
   }
@@ -916,58 +920,34 @@ function sample_perlin(perlin, x, y, t)
   local g_dl = perlin.get(perlin, gx,gy+1)
   local g_dr = perlin.get(perlin, gx+1,gy+1)
 
-  --local gridcenter_x = (gx + 0.5) * grid_w
-  --local gridcenter_y = (gy + 0.5) * grid_h
-  --local norm_xo = (x - gridcenter_x) / grid_w
-  --local norm_yo = (y - gridcenter_y) / grid_h
-  --local ul = (norm_xo) * cos(g_ul) + (norm_yo) * sin(g_ul)
-  --local ur = (1-norm_xo) * cos(g_ur) + (norm_yo) * sin(g_ur)
-  --local dl = (norm_xo) * cos(g_dl) + (1-norm_yo) * sin(g_dl)
-  --local dr = (1-norm_xo) * cos(g_dr) + (1-norm_yo) * sin(g_dr)
-
   local ul = (x-gx*grid_w) * cos(g_ul) + (y-gy*grid_h)*sin(g_ul)
   local ur = (x-(gx+1)*grid_w) * cos(g_ur) + (y-gy*grid_h)*sin(g_ur)
   local dl = (x-(gx)*grid_w) * cos(g_dl) + (y-(gy+1)*grid_h)*sin(g_dl)
   local dr = (x-(gx+1)*grid_w) * cos(g_dr) + (y-(gy+1)*grid_h)*sin(g_dr)
 
-  --if abs(x - (gx+1)*grid_w) < 2 then
-    --return 100
+  --if false then
+  --  return 2 * ur / grid_w
   --end
 
-  if false then
-    return 2 * ur / grid_w
-  end
-
-  if false then
-    if y < 64 then
-      return 2 * dr / grid_w
-    else
-      return 2 * ur / grid_w
-    end
-  end
+  --if false then
+  --  if y < 64 then
+  --    return 2 * dr / grid_w
+  --  else
+  --    return 2 * ur / grid_w
+  --  end
+  --end
 
   local norm_xo = (x-gx*grid_w) / grid_w
   local norm_yo = (y - gy*grid_h) / grid_h
 
-  if false then
-    return norm_yo
-  end
+  --if false then
+  --  return norm_yo
+  --end
 
   local fn = avgsmoothstep
   local interp_up = fn(ul, ur, norm_xo)
   local interp_down = fn(dl, dr, norm_xo)
   return 0.15*fn(interp_up, interp_down, norm_yo)
-
-  --if norm_yo > 0.5 then
-  --  return 0.15 * interp_down
-  --else
-  --  return 0.15 * interp_up
-  --end
-  --return 5*g_ul
-  --return 5*perlin_lerp(interp_up, interp_down, norm_yo)
-  --return norm_xo
-  --return 4*interp_down
-  --return interp_down
 end
 
 function precomp_perlin(perlin)
@@ -986,8 +966,21 @@ function precomp_perlin(perlin)
   return obj
 end
 
+function precomp_perlin_partial(perlin, partial, start, count)
+  for i=start,start+count do
+    local y = flr(i / partial.w)
+    local x = i % partial.w
+    add(partial.points, sample_perlin(perlin, x, y, 0))
+  end
+end
+
 function sample_precomp_perlin(pre, x, y, t)
-  return pre.points[1 + (pre.w) * y + x]
+  local rr = pre.points[1 + (pre.w) * y + x]
+  if rr == nil then
+    return 0
+  end
+
+  return rr
 end
 
 function init_noise(state)
@@ -1119,7 +1112,41 @@ function init_rainbow(state)
 end
 
 function init_sea(state)
-  cls(2)
+  --local p = make_perlin(5, 5)
+  --local p2 = make_perlin(5, 5)
+  local wave1 = {w=128,h=128,points={},i=0,max=128*128} --precomp_perlin(p)
+  local wave2 = {w=128,h=128,points={},i=0,max=128*128} --precomp_perlin(p2)
+  return init_sea_perlin(state, wave1, wave2)
+end
+
+--function make_perlin_sample_trans(target_state)
+--  local p = make_perlin(5, 5)
+--  --local p2 = make_perlin(5, 5)
+--  return {
+--    p = p,
+--    i = 0,
+--    max = 128*128,
+--    precomp = {
+--      w = 128,
+--      h = 128,
+--      points = {}
+--    },
+--    updatefn = function(s)
+--      local inc = 128 * 4
+--      precomp_perlin_partial(s.p, s.precomp, s.i, inc)
+--      s.i += inc
+--      if s.i >= s.max then
+--        return target_state
+--      end
+--    end,
+--    drawfn = function(s)
+--      rectfill(10, 90, (s.i / s.max)*118 + 10, 95, 7)
+--    end,
+--  }
+--end
+
+function init_sea_perlin(state, wave1_precomp, wave2_precomp)
+  cls(0)
   --music(1)
 
   state.disable_cls = true
@@ -1127,24 +1154,24 @@ function init_sea(state)
   add(state.dialogue, ".")
   add(state.dialogue, ".")
 
-  points = {}
+  state.player.x = 5
+  state.player.spr_look_right = true
+  state.player.y = 40
 
-  for i=0,10 do
-    add(points, {x = 64, y = i * 10})
-   end
+  points = {}
 
   local waves = {}
 
   for i = 0,1 do
   --if true then
-    local perlin = make_perlin(5, 5)
     local wave = {
       p = 0,
       state = 1,
       forward_vel = 0.009, --+ 0.002 * i,
       back_vel = 0.005 * 0.7, --+ 0.0004 * i,
       vel = 0,
-      precomp = precomp_perlin(perlin),
+      perlin = make_perlin(5, 5),
+      precomp = nil,
       update = function(o)
         if (o.p >= 1) then 
           o.state = -1
@@ -1169,6 +1196,12 @@ function init_sea(state)
         end
 
         o.p += o.vel
+
+        local inc = 128
+        if o.precomp.i < o.precomp.max then
+          precomp_perlin_partial(o.perlin, o.precomp, o.precomp.i, inc)
+          o.precomp.i += inc
+        end
       end
     }
     add(waves, wave)
@@ -1177,9 +1210,11 @@ function init_sea(state)
   waves[1].p = 0
   waves[1].vel = waves[1].forward_vel
   waves[1].state = 1
+  waves[1].precomp = wave1_precomp
   waves[2].p = 0
   waves[2].vel = waves[2].back_vel
   waves[2].state = -1
+  waves[2].precomp = wave2_precomp
 
   local bgdraw = {
     x = 0,
@@ -1194,6 +1229,12 @@ function init_sea(state)
       o.t = o.t + 1
     end,
     draw = function(o, state)
+      if (o.waves[1].precomp.i < o.waves[1].precomp.max) then
+        if rnd() < 0.2 then
+          dump_noise(0.1)
+        end
+        return
+      end
       local scale = 2 --+ o.t / 1000
       local prob = 0.95 -- o.t / 1000
       local k = 128/scale
@@ -1226,10 +1267,10 @@ function init_sea(state)
         min_wave_id = 2
       end
 
-      local sand = 2
+      local sand = 0
       local sand_wet = 1
       local froth = 7
-      local sea = 1
+      local sea = 2
 
       local consts = 122.5 / (16 * 4 * 2)
 
@@ -1265,9 +1306,6 @@ function init_sea(state)
               local diag_c = 25
               local diag1 = (x - 64) / 8 + (y - 64) / 4 + diag_c
               local diag2 = 0.7 * (x - 64) / 8 + 1.3 *(y - 64) / 4 + diag_c + 2
-              --local diag1 = x / 8 + (1) * y / 4
-              --local diag2 = x / 8 - (1) * y / 4 + 15
-              --local diag2 = x / 8 - (1) * y / 4 + 15
 
               local height_min = 0
               local diag_min = 0
@@ -1342,40 +1380,14 @@ function init_sea(state)
         end
       end
 
-      if false then
-        for y=0,o.perlin.h do
-          for x=0,o.perlin.w do
-            local startx = x * 128/o.perlin.w
-            local c = 10
-            if startx < c then
-              startx = startx + c
-            end
-            if startx > 128-c then
-              startx = startx - c
-            end
-
-            local starty = y * 128/o.perlin.h
-            if starty < c then
-              starty = starty + c
-            end
-            if starty > 128-c then
-              starty = starty - c
-            end
-
-            local len = 8
-            local endx = startx + len * cos(o.perlin.get(o.perlin, x, y))
-            local endy = starty + len * sin(o.perlin.get(o.perlin, x, y))
-            rectfill(startx, starty, startx+1, starty+1, 8)
-            line(startx, starty, endx, endy, 7)
-          end
-        end
-      end
       if state.debug then
         print(stat(7), 10, 10, 7)
 
         rectfill(10, 20, 40, 50, 0)
         print(o.waves[1].p, 10, 20, 8)
         print(o.waves[2].p, 10, 40, 11)
+
+      rectfill(10, 90, (o.waves[1].precomp.i / o.waves[1].precomp.max)*108 + 10, 95, 7)
       end
     end,
   }
@@ -1552,12 +1564,6 @@ function make_player(x, y)
 
     end,
     draw = function(p, state)
-      --circfill(p.x, p.y, rnd(state.dialogue_state * 2), 0)
-
-      --rectfill(p.x, p.y, p.x+3, p.y+3, 7)
-      --if state.dialogue_state > 4 then
-        --circfill(p.x, p.y, 3 + rnd(8), 7)
-      --end
       local d = sqr(p.xvel) + sqr(p.yvel)
       local s = 28
       if d > 0.1 then
@@ -1723,10 +1729,6 @@ function draw_dead(state)
   end
 end
 
-----------------------------------
-----------------------------------
-----------------------------------
-
 function init_talking()
   music(-1)
   local s = {
@@ -1872,16 +1874,6 @@ function draw_scene(state)
   local wx = x + 22
   local wy = y - 19
 
-  --for i=0,1 do
-  --  local xx = wx+2 + rnd(12)
-  --  local yy = wy+2 + rnd(12)
-  --  ocal theta = 0.19
-  --  local len = 9
-  --  local x1 = min(max(wx+2, xx + len * cos(theta)), wx+12)
-  --  local y1 = min(max(wy+2, yy + len * sin(theta)), wy+12)
-  --  line(xx, yy, x1, y1, 7)
-  --end
-
   spr(32, wx, wy)
   spr(33, wx+8, wy)
   spr(48, wx, wy+8)
@@ -1988,10 +1980,6 @@ function draw_talking(state)
   end
 end
 
-----------------------------------
-----------------------------------
-----------------------------------
-
 function init_intro()
   s = {
     t = 0,
@@ -2052,21 +2040,7 @@ function draw_intro(state)
     end
   end
 
-  -- what you are about to witness is a studio recreation
-  -- on the 9th januaray 2013 a team of paranormal researchers
-  -- were hired to review the footage
-   
-  -- now in a controled environment
-  -- intern pete
-  -- sprite please come forward
-  -- what do you have to tell us
-  --draw_text(state.t, "intern pete, prepare the stethosisphere", 32, 32, 7)
-  --print("intern pete prepare the stethosisphere", 32, 32, 7)
 end
-
-----------------------------------
-----------------------------------
-----------------------------------
 
 
 function draw_text(t, text, x, y, col, sfx_id)
@@ -2136,13 +2110,6 @@ function generate_cycle_fillp(k)
     local x = bnot(shl(1, k))
     pat = band(x, pat)
     return pat
-    -- local i = 0
-    --while i < min(k, 32) do
-    --  local x = shl(1, i)
-    --  pat = bor(pat, x)
-    --  i += 1
-    --end
-    --return pat
 end
 
 function generate_fillp(t, k, bits_selector, just_filter)
@@ -2177,14 +2144,6 @@ function fill_bits(k)
 end
 
 function map_angle(x, a, k)
-      --local sample_angle = normalize_angle((a + modp * angle + rnd(0.005)))
-      --local sample_angle = (a + modp * angle + rnd(0.005))
-          -- sample backwards to prevent branch cut
-
-          --new_angle = 1-new_angle
-        --new_angle = new_angle / 2
-        --sget_x = flr(sx_mid + dist*cos(new_angle))
-        --sget_y = flr(sy_mid + dist*sin(new_angle))
   if (x < 0.5) then
     if (x < 0.25) then
       --return 0
