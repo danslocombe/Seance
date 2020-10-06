@@ -32,7 +32,13 @@ __lua__
 -- 
 -- disco elysium style inner voices talking to you
 -- 
+-- blah blah blah economics blah blah
+-- blah blah blah game design blah blah
+-- blah blah player agency blah blah
 
+-- what they have the ability to do is beam it out from your third eye
+-- as a hologram into the real world and then it gradually materialses out into a solid object
+-- its like 3d printing with your imagination
 
 text_speed = 0.35
 text_speed_internal = text_speed * 1.5
@@ -46,8 +52,8 @@ function _init()
 
   global_state = init_dead()
   --init_bedroom(global_state)
-  init_rainbow(global_state)
-  --init_sea(global_state)
+  --init_rainbow(global_state)
+  init_sea(global_state)
   --init_noise(global_state)
 
   --global_state = init_talking()
@@ -108,6 +114,7 @@ function init_dead()
     objects = {},
     drawables = {},
     cols = {},
+    debug = false,
 
     phase_text_y = 0,
     phase_col = 0,
@@ -1132,18 +1139,18 @@ function init_sea(state)
   --if true then
     local perlin = make_perlin(5, 5)
     local wave = {
-      p = i,
+      p = 0,
       state = 1,
-      forward_vel = 0.009 + 0.002 * i,
-      back_vel = 0.005 + 0.0004 * i,
+      forward_vel = 0.009, --+ 0.002 * i,
+      back_vel = 0.005 * 0.7, --+ 0.0004 * i,
       vel = 0,
       precomp = precomp_perlin(perlin),
       update = function(o)
-        if (o.p > 1) then 
+        if (o.p >= 1) then 
           o.state = -1
         end
 
-        if (o.p < -1) then
+        if (o.p <= -1) then
           o.state = 1
         end
 
@@ -1166,6 +1173,13 @@ function init_sea(state)
     }
     add(waves, wave)
   end
+
+  waves[1].p = 0
+  waves[1].vel = waves[1].forward_vel
+  waves[1].state = 1
+  waves[2].p = 0
+  waves[2].vel = waves[2].back_vel
+  waves[2].state = -1
 
   local bgdraw = {
     x = 0,
@@ -1195,29 +1209,6 @@ function init_sea(state)
         return 3.5 * x + 17
       end
 
-      --local time_t = o.t / 450
-      --local time_t_1 = o.t / 520 + 0.5
-      --local wave0_b = fn(time_t)
-      --local wave1_b = fn(time_t_1)
-      --local wave0 = wave_fn(wave0_b)
-      --local wave1 = 1.05 * wave_fn(wave1_b)
-      --local wave0_d = fn_deriv(time_t)
-      --local wave1_d = fn_deriv(time_t_1)
-      --local min_wave = min(wave0, wave1)
-
-      --local waveout = 0
-      --local waveout_d = 0
-      --local waveout_b = 0
-      --if wave0 < wave1 then
-      --  waveout = wave0
-      --  waveout_d = wave0_d
-      --  waveout_b = wave0_b
-      --else
-      --  waveout = wave1
-      --  waveout_d = wave1_d
-      --  waveout_b = wave1_b
-      --end
-
       local wave_1 = wave_fn(-o.waves[1].p)
       local wave_2 = wave_fn(-o.waves[2].p)
 
@@ -1235,14 +1226,8 @@ function init_sea(state)
         min_wave_id = 2
       end
 
-      --local sand = 9
-      --local sand_wet = 4
-
-      --local sand = 15
-      --local sand_wet = 2
-      --local sand_wet = 12
       local sand = 2
-      local sand_wet = 13
+      local sand_wet = 1
       local froth = 7
       local sea = 1
 
@@ -1277,8 +1262,12 @@ function init_sea(state)
               local sampled2 = sample_precomp_perlin(o.waves[2].precomp, x*scale, y*scale, o.t)
               local height1 = 3 + 1*(sampled1 + rnd(0.5))
               local height2 = 3 + 1*(sampled2 + rnd(0.5))
-              local diag1 = x / 8 + (1) * y / 4
-              local diag2 = x / 8 + (1.5) * y / 4
+              local diag_c = 25
+              local diag1 = (x - 64) / 8 + (y - 64) / 4 + diag_c
+              local diag2 = 0.7 * (x - 64) / 8 + 1.3 *(y - 64) / 4 + diag_c + 2
+              --local diag1 = x / 8 + (1) * y / 4
+              --local diag2 = x / 8 - (1) * y / 4 + 15
+              --local diag2 = x / 8 - (1) * y / 4 + 15
 
               local height_min = 0
               local diag_min = 0
@@ -1292,24 +1281,11 @@ function init_sea(state)
 
               local col = sand
 
-
-              if (diag_min + height_min > 13 and min_wave) then
-                col = sand_wet
-              end
-
               local cc = 1.2
-
-              --if (height + diag) > 10 and rnd() > 0.49 then
-                --col = 9
-              --end
 
               if (height1 + diag1) > wave_1 or (height2 + diag2) > wave_2 then
                 col = sea
               end
-
-              --elseif (height + diag) > min_wave then
-                --col = 13
-              --end
 
               local w = o.waves[1]
               local wave1_dd = height1 + diag1 - wave_1
@@ -1322,57 +1298,46 @@ function init_sea(state)
               if w.vel > 0 and wave2_dd < -((- w.p) - cc) and wave2_dd > 0 then
                 col = froth
               end
+              
+              local waveback_1_dd = height1 + diag1 - min_wave
+              if col == sea and o.waves[1].vel < 0 and waveback_1_dd < -(-o.waves[1].p - cc * 0.8) and waveback_1_dd > 0 then
+                col = sand_wet
+                --col = 13
+                if rnd() < 0.9 then
+                  col = froth
+                end
+                if rnd() < 0.05 then
+                  --col = sand_wet
+                end
+              end
 
-              if (col == sand and rnd() < 0.95) then
+              local waveback_2_dd = height2 + diag2 - min_wave
+              if col == sea and o.waves[2].vel < 0 and waveback_2_dd < -(-o.waves[2].p - cc * 0.8) and waveback_2_dd > 0 then
+                col = sand_wet
+                --col = 13
+                if rnd() < 0.9 then
+                  col = froth
+                end
+                if rnd() < 0.05 then
+                  --col = sand_wet
+                end
+              end
+
+              if state.debug then
+                if abs(wave1_dd) < 0.125 then
+                  col = 8
+                end
+                if abs(wave2_dd) < 0.125 then
+                  col = 11
+                end
+              end
+
+              if (col == sand and rnd() < 0.75) then
                 -- chance to just continue to leave wet sand
               else
                 rectfill(x*scale, y *scale, (x+1)*scale, (y+1)*scale, col)
               end
             end
-            if false then
-              local col = 2
-              local sampled = sample_precomp_perlin(o.precomp, x*scale, y*scale, o.t)
-              local height = 3 + 1*(sampled + rnd(0.5))
-              local tide_t = o.t / 600
-              local diag = x / 8 + (1) * y / 4
-              local f_t_c = 0.111
-              local f_t = sin(tide_t) + f_t_c * sin(tide_t * 2)
-              local f_t_deriv = cos(tide_t) + f_t_c * 2 * cos(tide_t * 2)
-              local tide = 3.5 * (1 + f_t) + 13
-              local dir = f_t_deriv
-              local froth_h = (height + diag + 0.25) - (0.2 * f_t - 0.05) * diag + 0.5
-              local sea_h = height + diag
-              if (froth_h) > tide then
-                if (dir > 0) then
-                  col = 7
-                else
-                  col = 7
-                end
-                if (sea_h) > tide then
-                  col = 1
-                end
-              elseif sea_h > tide then
-                col = 13
-              end
-
-              if (col == 7 and f_t_deriv < 0 and rnd() < 0.5) then
-                -- going out
-                if rnd() < 0.5 then
-                  col = 2
-                end
-              end
-
-              if (col == 7 and rnd() < 0.05) then
-                col = 1
-              end
-
-              if (col == 2 and rnd() < 0.8) then
-                -- chance to just continue to leave wet sand
-              else
-                rectfill(x*scale, y *scale, (x+1)*scale, (y+1)*scale, col)
-              end
-            end
-            --rectfill(x*scale, y*scale, (x+1)*scale, (y+1)*scale, col)
           end
         end
       end
@@ -1405,8 +1370,13 @@ function init_sea(state)
           end
         end
       end
-      print(stat(7), 10, 10, 7)
-      print(player_height, 10, 20, 7)
+      if state.debug then
+        print(stat(7), 10, 10, 7)
+
+        rectfill(10, 20, 40, 50, 0)
+        print(o.waves[1].p, 10, 20, 8)
+        print(o.waves[2].p, 10, 40, 11)
+      end
     end,
   }
 
@@ -1631,6 +1601,10 @@ function update_dead(state)
         end
       end
     end
+  end
+
+  if btnp(4) then
+    state.debug = not state.debug
   end
 
   for i,o in pairs(state.objects) do
