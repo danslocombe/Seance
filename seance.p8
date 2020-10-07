@@ -1112,6 +1112,7 @@ function init_rainbow(state)
 end
 
 function init_sea(state)
+  sfx(27)
   --local p = make_perlin(5, 5)
   --local p2 = make_perlin(5, 5)
   local wave1 = {w=128,h=128,points={},i=0,max=128*128} --precomp_perlin(p)
@@ -1147,7 +1148,19 @@ end
 
 function init_sea_perlin(state, wave1_precomp, wave2_precomp)
   cls(0)
+  music(-1)
   --music(1)
+
+  state.goto_next = {
+    test = function(state)
+      return state.player.x > 120
+    end,
+    init = function()
+      local s = init_dead()
+      init_rainbow(s)
+      return make_noise_transition(s)
+    end,
+  }
 
   state.disable_cls = true
 
@@ -1222,22 +1235,61 @@ function init_sea_perlin(state, wave1_precomp, wave2_precomp)
     t = 0,
     --perlin = perlin,
     --precomp = precomp_perlin(perlin),
+    fadein_t_start = 32,
+    fadein_t = 32,
     waves = waves,
+    pitch = 0,
     update = function(o, state)
-      waves[1].update(waves[1])
-      waves[2].update(waves[2])
+      o.waves[1].update(waves[1])
+      o.waves[2].update(waves[2])
       o.t = o.t + 1
+      --sfx
+      if o.waves[1].precomp.i < o.waves[1].precomp.max then
+        o.pitch = -1.5 -rnd(0.25)
+      else
+        local pitch_p_max = max(o.waves[1].p, o.waves[2].p)
+        if o.waves[1].vel > 0 and o.waves[2].vel > 0 then
+          o.pitch = lerp(o.pitch, pitch_p_max, 6)
+        elseif o.waves[1].vel > 0 then
+          o.pitch = lerp(o.pitch, o.waves[1].p, 6)
+        elseif o.waves[2].vel > 0 then
+          o.pitch = lerp(o.pitch, o.waves[2].p, 6)
+        else
+          o.pitch -= 0.01
+        end
+
+      end
+
+      set_note(27, 0, make_note(32 + flr(16*o.pitch), 6, 2, 0))
     end,
     draw = function(o, state)
-      if (o.waves[1].precomp.i < o.waves[1].precomp.max) then
-        if rnd() < 0.2 then
-          dump_noise(0.1)
-        end
-        return
-      end
       local scale = 2 --+ o.t / 1000
       local prob = 0.95 -- o.t / 1000
       local k = 128/scale
+
+      if (o.waves[1].precomp.i < o.waves[1].precomp.max) then
+        if rnd() < 0.12 then
+          dump_noise(0.1)
+        end
+
+        for x=0,k do
+          for y=0,k do
+            if rnd() > prob and x*scale < 128 and y*scale < 128 then
+              local col = 0
+              rectfill(x*scale, y *scale, (x+1)*scale, (y+1)*scale, col)
+            end
+          end
+        end
+        --state.player.xvel = state.player.xvel / 1.85
+        --state.player.yvel = state.player.yvel / 1.85
+        return
+      end
+
+      if o.fadein_t > 0 then
+        o.fadein_t -= 1
+        local diff = 1 - prob
+        prob = prob + diff * sqr(o.fadein_t / o.fadein_t_start)
+      end
 
       local fn_k = 0.12
       local fn = function(x)
@@ -1396,57 +1448,6 @@ function init_sea_perlin(state, wave1_precomp, wave2_precomp)
 
   add(state.objects, bgdraw)
   add(state.drawables, bgdraw)
-end
-
-function init_rose_garden(state)
-  cls(0)
-  --dump_noise(0.2)
-  add(state.dialogue, "i beckon thee ........")
-  add(state.dialogue, "feel .... ... ...  to the")
-  add(state.dialogue, "vibrations ................")
-  add(state.dialogue, "....... fetch the .... ....")
-  add(state.dialogue, "i sense a presence amongst us")
-  add(state.dialogue, "come close everyone we can ...")
-  add(state.dialogue, "susan please stop")
-  add(state.dialogue, "please everone sit down an be ")
-  add(state.dialogue, "quiet class is in progress")
-  add(state.dialogue, "everyone this is serious please")
-  add(state.dialogue, "the spirit is nearing us quick!")
-  add(state.dialogue, "            stop           ")
-  add(state.dialogue, "light the candles darling")
-
-  local add_talker = function(s, x, y, text, funny)
-    local obj = {
-      s = s,
-      x = x,
-      y = y,
-      text = text,
-      funny = funny,
-      draw = function(o, state)
-        palt(11, true)
-        palt(0, false)
-        spr(o.s, o.x - 4, o.y - 4)
-        palt()
-      end
-    }
-
-    add(state.objects, obj)
-    add(state.drawables, obj)
-  end
-
-  add_talker(16, 100, 32, {"you are reminded of", "something deep inside you"})
-  add_talker(16, 46, 26, {"the scent of roses fills you"})
-  add_talker(16, 40, 48, {"the scent brings a","great melencholy"})
-
-  add_talker(16, 12, 59, {"wow a cool plant"}, true)
-  add_talker(16, 40, 80, {"what is worse,", "the pain of the remembering,", " or the pain of the smelling?", text_pause = 10}, true)
-  add_talker(16, 70, 52, {"you are transported back home,", "your mother smiles", text_pause = 12 })
-  add_talker(16, 98, 89, {"actually you dont really like", "this one" }, true)
-
-  add_talker(20, 23, 100, {"an oil painting in front", "of you, it is ugly and ", "shouldn't be here", text_pause = 2}, true)
-  add_talker(25, 76, 115, {"the smell of burning wax", "evokes...", "evokes...", text_pause = 12})
-
-  add_talker(28, 67, 78, {"\"my soul is a vessel,", "and my nose the steam paddle\"", text_pause = 10}, true)
 end
 
 function make_player(x, y)
@@ -2010,38 +2011,6 @@ function update_intro(state)
   end
 end
 
-function draw_intro(state)
-  cls(0)
-  -- based on a collection of transcripts from the infamous
-  -- 1998 summonings of hawthorn manor 
-
-  if state.s == 0 then
-    draw_text(state.t, "based on a collection of", 4, 32, 7)
-    draw_text(state.t - 32, "transcripts from the infamous", 4, 32 + 8, 7)
-    draw_text(state.t - 64, "1998 events at hawthorne manor.", 4, 32 + 16, 7)
-  end
-
-  if state.s == 1 then
-    draw_text(state.t, "before publication, a team of", 4, 32, 7)
-    draw_text(state.t - 32, "of paranormal reasearchers was", 4, 32 + 8, 7)
-    draw_text(state.t - 64, "hired to corroborate the", 4, 32 + 16, 7)
-    draw_text(state.t - 96, "presented findings.", 4, 32 + 24, 7)
-  end
-
-  if state.s == 2 then
-    draw_text(state.t, "a complete list of sources", 4, 32, 7)
-    draw_text(state.t - 32, "can be on our website:", 4, 32 + 8, 7)
-    draw_text(state.t - 64, "http://ss.wordpress.com/ref.php", 4, 32 + 16, 7)
-  end
-
-  if state.t > state.complete then
-    if (state.t % 60) < 30 then
-      print("█", 110, 100, 7)
-    end
-  end
-
-end
-
 
 function draw_text(t, text, x, y, col, sfx_id)
   if sfx_id != nil and t < #text then
@@ -2234,6 +2203,22 @@ function make_text_transition(target_state, text)
   }
 
   return s
+end
+
+function make_note(pitch, instr, vol, effect)
+  return { pitch + 64*(instr%4) , 16*effect + 2*vol + flr(instr/4) }
+  -- flr may be redundant when this is poke'd into memory
+end
+
+function get_note(sfx, time)
+  local addr = 0x3200 + 68*sfx + 2*time
+  return { peek(addr) , peek(addr + 1) }
+end
+
+function set_note(sfx, time, note)
+  local addr = 0x3200 + 68*sfx + 2*time
+  poke(addr, note[1])
+  poke(addr+1, note[2])
 end
 
 __gfx__
@@ -2464,7 +2449,7 @@ __label__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 
 __sfx__
-0101000023050230502305032050320503205031000160002300022000210001f0001e0001b000170001600000000000000000000000000000000000000000000000000000000000000000000000000000000000
+010100001a050230502305032050320503205031000160002300022000210001f0001e0001b000170001600000000000000000000000000000000000000000000000000000000000000000000000000000000000
 018300000c214182140c214184140c214182140c214184140a214162140a214164140521411214052141141400004000000000000000000000000000000000000000000000000000000000000000000000000000
 011800000c0100c0200c0300c0400c0400c0300c0200c0100c0100c0200c0300c0400c0300c0200c0100c0100c0100c0200c0300c0300c0200c0100c0100c0100c0100c0200c0300c0400c0500c0400c0300c020
 0110000000000000000000000000000001a0101a0501a010000000000021010210502101000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -2490,6 +2475,8 @@ __sfx__
 000200002202021030130301304013040130401504013040130401404014040140401404015040150401503016030160301603016040160401604016040150401504014040150301504016040160501704016040
 011000000e3530223002230022300e35300000262301a2320e3531a2301a2301a2300e3531723006232062320e3530223002230022300e3530000002230022300e3530000000000000000e353000000e4531a453
 011000000e3530220002200022000e35300000262001a2020e3531a2001a2001a2000e3531720006202062020e3530220002200022000e3530000002200022000e3530000000000000000e353000000e4531a453
+001000000c6500e6501065011650116501165012650126501265013650146501565013650136501565017650176501b6501c6501e6501f6502165024650286502b6502d65027650236501b65016650136500f650
+001000011f6503900037000340003200030000300002c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __music__
 03 02034344
 04 06074344
@@ -2498,4 +2485,5 @@ __music__
 03 4f0e5244
 03 4914154c
 03 19524b4c
+03 1a424344
 
