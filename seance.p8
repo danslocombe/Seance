@@ -52,9 +52,29 @@ function _init()
 
   global_state = init_dead()
   --init_bedroom(global_state)
-  init_sea(global_state)
-  --global_state = make_perlin_sample_trans(global_state)
+  local diag_consts = {
+    x1 = 1/8,
+    y1 = 1/4,
+    c1 = 25,
+    x2 = 0.7/8,
+    y2 = 1.3/4,
+    c2 = 27,
+  }
+  local diag_consts2 = {
+    x1 = 1/100,
+    y1 = 1/4,
+    c1 = 18,
+    x2 = 0.7/16,
+    y2 = 1.3/4,
+    c2 = 24,
+  }
+  init_sea(global_state, {diag=diag_consts, make_next = function()
+    local s = init_dead()
+    init_sea(s, {diag=diag_consts2, add_cave=true})
+    return s
+  end})
   --init_rainbow(global_state)
+  --global_state = make_perlin_sample_trans(global_state)
   --init_sea(global_state)
   --init_noise(global_state)
 
@@ -967,7 +987,7 @@ function precomp_perlin(perlin)
 end
 
 function precomp_perlin_partial(perlin, partial, start, count)
-  for i=start,start+count do
+  for i=start,start+count-1 do
     local y = flr(i / partial.w)
     local x = i % partial.w
     add(partial.points, sample_perlin(perlin, x, y, 0))
@@ -1039,26 +1059,32 @@ function init_noise(state)
 end
 
 function init_rainbow(state)
-  cls(2)
+  cls(0)
+  music(0)
   state.disable_cls = true
 
   add(state.dialogue, ".")
   add(state.dialogue, ".")
-
-  local waves = {}
+  state.player.y = 110
+  state.player.x = 16
 
   local perlin = make_perlin(5, 5)
-  local precomp = precomp_perlin(perlin)
+  --local precomp = precomp_perlin(perlin)
+  local precomp = {w=128,h=128,points={},i=0,max=128*128}
 
   local bgdraw = {
     x = 0,
     y = 0,
     t = 0,
     perlin = perlin,
-    precomp = precomp_perlin(perlin),
-    waves = waves,
+    precomp = precomp,
     update = function(o, state)
       o.t = o.t + 1
+      local inc = 128
+      if o.precomp.i < o.precomp.max then
+        precomp_perlin_partial(o.perlin, o.precomp, o.precomp.i, inc)
+        o.precomp.i += inc
+      end
     end,
     draw = function(o, state)
       local scale = 2 --+ o.t / 1000
@@ -1077,7 +1103,8 @@ function init_rainbow(state)
       end
 
       local diagfunfov = function(x, y, t)
-        return 0.36 * (x / 8 + y / 4) --* sqr(sin(t / 10000))
+        --return 0.36 * (x / 8 + y / 4) --* sqr(sin(t / 10000))
+        return -0.36 * ((64 - x)  + (y) / 2) / 4 + 10
         --return 3* sin(y / 50)
         --return sqr(x/8 + y / 4) / 80
       end
@@ -1094,14 +1121,16 @@ function init_rainbow(state)
             local diag1 = diagfun(x*scale, y*scale, o.t)
             local col = sampled1 + diag1
             if abs(player_height - col) > 2.5 then
-              col = 2
+              col = 0
             end
             rectfill(x*scale, y *scale, (x+1)*scale, (y+1)*scale, col)
           end
         end
       end
-      print(stat(7), 10, 10, 7)
-      print(player_height, 10, 20, 7)
+      if state.debug then
+        print(stat(7), 10, 10, 7)
+        print(player_height, 10, 20, 7)
+      end
     end,
   }
 
@@ -1111,13 +1140,13 @@ function init_rainbow(state)
   add(state.drawables, bgdraw)
 end
 
-function init_sea(state)
+function init_sea(state, config)
   sfx(27)
   --local p = make_perlin(5, 5)
   --local p2 = make_perlin(5, 5)
   local wave1 = {w=128,h=128,points={},i=0,max=128*128} --precomp_perlin(p)
   local wave2 = {w=128,h=128,points={},i=0,max=128*128} --precomp_perlin(p2)
-  return init_sea_perlin(state, wave1, wave2)
+  return init_sea_perlin(state, wave1, wave2, config)
 end
 
 --function make_perlin_sample_trans(target_state)
@@ -1146,20 +1175,26 @@ end
 --  }
 --end
 
-function init_sea_perlin(state, wave1_precomp, wave2_precomp)
+function init_sea_perlin(state, wave1_precomp, wave2_precomp, config)
   cls(0)
   music(-1)
+  local diag_consts = config.diag
   --music(1)
 
-  state.goto_next = {
-    test = function(state)
-      return state.player.x > 120
-    end,
-    init = function()
+  local make_next = config.make_next
+  if make_next == nil then
+    make_next = function()
       local s = init_dead()
       init_rainbow(s)
       return make_noise_transition(s)
+    end
+  end
+
+  state.goto_next = {
+    test = function(state)
+      return state.player.x > 130
     end,
+    init = make_next,
   }
 
   state.disable_cls = true
@@ -1356,8 +1391,10 @@ function init_sea_perlin(state, wave1_precomp, wave2_precomp)
               local height1 = 3 + 1*(sampled1 + rnd(0.5))
               local height2 = 3 + 1*(sampled2 + rnd(0.5))
               local diag_c = 25
-              local diag1 = (x - 64) / 8 + (y - 64) / 4 + diag_c
-              local diag2 = 0.7 * (x - 64) / 8 + 1.3 *(y - 64) / 4 + diag_c + 2
+              --local diag1 = (x - 64) / 8 + (y - 64) / 4 + diag_c
+              --local diag2 = 0.7 * (x - 64) / 8 + 1.3 *(y - 64) / 4 + diag_c + 2
+              local diag1 = diag_consts.x1 * (x-64) + diag_consts.y1 * (y-64) + diag_consts.c1
+              local diag2 = diag_consts.x2 * (x-64) + diag_consts.y2 * (y-64) + diag_consts.c2
 
               local height_min = 0
               local diag_min = 0
@@ -1448,6 +1485,20 @@ function init_sea_perlin(state, wave1_precomp, wave2_precomp)
 
   add(state.objects, bgdraw)
   add(state.drawables, bgdraw)
+
+  if config.add_cave then
+    add(state.drawables, {
+      x = 20,
+      y = 20,
+      draw = function(o, state)
+        palt(11, true)
+        palt(0, false)
+        --rectfill(o.x, o.y, o.x+12, o.y+12, 7)
+        sspr(14*8,5*8,16,16, o.x, o.y,16,16,false,false )
+        palt()
+      end,
+    })
+  end
 end
 
 function make_player(x, y)
@@ -1728,208 +1779,6 @@ function draw_dead(state)
       end
     end
   end
-end
-
-function init_talking()
-  music(-1)
-  local s = {
-    t = 0,
-    s = 0,
-    global_t = 0,
-    state_init = true,
-    updatefn = update_talking,
-    drawfn = draw_talking,
-
-    filter_scene = true,
-    filter_pat = 0,
-    noise_mag = 0,
-
-    text = "",
-    face_sprite_x = 0,
-    face_sprite_y = 32,
-    face_scale = 1,
-    face_angle = -0.25,
-    face_mod = 1,
-    face_mod_d = 0,
-    draw_face = false,
-    dialogue_state = 0,
-    dialogue_t = 0,
-    dialogue = {},
-
-    phase_text_y = 0,
-    phase_col = 0,
-    phase_bg_bits = 0,
-  }
-
-  return s
-end
-
-function update_talking(state)
-  state.t += 1
-  state.dialogue_t += 1
-  state.global_t += 1
-
-  if state.s == 0 then
-    if state.state_init then
-      state.dialogue = {}
-      add(state.dialogue, "           stop            ")
-      add(state.dialogue, "light the candles darling")
-      state.draw_face = true
-    end
-    state.filter_scene = true
-    state.filter_pat = 0b0000000000000000.1
-    local speed = sqr((1 + state.dialogue_state) * 0.15)
-    local is_end = (state.dialogue_state == #state.dialogue - 2 and abs(state.phase_text_y - dialogue_y) < 1)
-      or state.dialogue_state == #state.dialogue - 1
-    if is_end then
-      state.phase_text_y = dialogue_y
-      speed = 0
-    end
-    state.phase_text_y = (state.phase_text_y + speed) % 128
-    if is_end then
-      state.phase_col = 0
-      state.phase_bg_bits = 0
-      state.face_scale = lerp(state.face_scale, 1.15 + 0.08*sin(state.global_t / 250), 40)
-      state.face_mod = 0
-      state.noise_mag = 0.0125
-    else
-      state.face_scale = 0
-      state.phase_col += 0.4 * speed
-      state.phase_bg_bits += 0.3 * speed
-    end
-  elseif state.s == 1 then
-    if state.state_init then
-      music(0)
-      state.dialogue = {}
-      add(state.dialogue, "intern pete, move the gin")
-      add(state.dialogue, "ahh the spirits are in motion")
-      --add(state.dialogue, "ahh i can feel the spirits")
-    end
-  elseif state.s == 2 then
-    if state.state_init then
-      state.dialogue = {}
-      state.face_sprite_x = 5*8
-      add(state.dialogue, "hello hello")
-      state.pete_x = -4
-    end
-
-    if (state.pete_x < 64) then
-      state.pete_x += 0.95
-    end
-  end
-
-  state.state_init = false
-
-  if (state.s > 0) then
-    state.filter_scene = true
-
-    local fade_in = state.s == 1
-    state.filter_pat = generate_fillp(state.t, 32, state.t/7, not fade_in)
-
-    if state.s == 1 then
-      state.noise_mag = 1 / state.t
-    else
-      state.noise_mag = 0
-    end
-
-    state.face_angle = -0.25 + 0.025 * cos(state.global_t / 300)
-
-    -- how much to sample angle in rendering
-    state.face_mod = min(1, sqr(state.t/ 60))
-    -- how much to offset distance in rendering
-    state.face_mod_d = sin(state.global_t / 1000) * 4 / (0.1 * state.t + 1)
-    state.face_scale = 1.15 + 0.08*sin(state.global_t / 250)
-  end
-
-  if (state.dialogue_state < #state.dialogue) then
-    state.text = state.dialogue[state.dialogue_state+1]
-    if action_pressed() then
-      if state.dialogue_t * text_speed < #state.text then
-        state.dialogue_t = 1000
-      else
-        state.dialogue_state += 1
-        state.dialogue_t = 0
-
-        if state.dialogue_state >= #state.dialogue then
-          state.dialogue_state = 0
-          state.s += 1
-          state.state_init = true
-          state.t = 0
-        end
-      end
-    end
-  end
-end
-
-function draw_scene(state)
-  local y = 128 * 3 / 4 - 8
-  local x = 32
-  palt(11, true)
-  palt(0, false)
-
-  -- paintings
-  spr(18, x + 11, y - 14)
-  spr(20, x + 43, y - 14)
-
-  -- window
-  local wx = x + 22
-  local wy = y - 19
-
-  spr(32, wx, wy)
-  spr(33, wx+8, wy)
-  spr(48, wx, wy+8)
-  spr(49, wx+8, wy+8)
-
-  -- characters
-  -- get offset to sprite index
-  local get_off = function(i)
-    if ((state.t + i) % 128) < 64 then
-      return 16
-    else
-      return 0
-    end
-  end
-
-  spr(1+get_off(1), x, y)
-  spr(5+get_off(5), x+48, y)
-  spr(6+get_off(10), x+16, y)
-  spr(7+get_off(7), x+32, y)
-
-  -- floor
-  for i = 0,6 do
-    spr(34, x + i * 8, y + 12)
-  end
-
-  -- table
-  spr(2, x+8, y)
-  spr(3, x+16, y)
-  spr(3, x+24, y)
-  spr(3, x+32, y)
-  spr(4, x+40, y)
-
-  -- pete
-  if state.s == 2 then
-    spr(37+get_off(12), state.pete_x, y + 7)
-  end
-
-  --candles
-  spr(8 + (state.t / 16) % 4, x+7, y-2)
-  spr(8 + ((state.t + 2) / 16) % 4, x+40, y-2)
-
-  -- effects
-
-  if (state.noise_mag > 0.01) then
-    dump_noise(state.noise_mag)
-    if (state.filter_scene) then
-      fillp(state.filter_pat)
-      rectfill(0, 0, 128, 128, 0)
-      fillp()
-    end
-  end
-
-  palt()
-
-
 end
 
 function draw_phasein(state)
@@ -2263,21 +2112,21 @@ bb777700fffffffffff00777bbbbbbbbbbbbbbbbbbbbbe11e1100e101eee0111bebbbbbbbbbbbbbb
 b777770fffffffffffff0777bbbbbbbbbbbbbbbbbbbbb0e1eee00e101eee01e11eebbbbbbbbbbbbbbbb7777777bbbbbbbbebbbbbbbbbbebbbbeeeeebbbbbbbbb
 b777700aaaaffffffaaf0077bbbbbbbbbbbbbbbbbbbbe001eee000e00ee00ee11eeebbbbbbbbbbbbbbb7b7b7b7bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 b77770ffffaaaaaaaafff077ffaaaaaaaafff077bbee00eeeeeeeee4eeeeeeeeeeeeebbb0000e00ebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b77770ffffffffffffffff07ffffffffffffff07bbbee0e0000000ee0000e001eeeeebbb4440400ebbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b77700f0000ffffff0000ff0000ffffff0000ff0bbbee04400004444444040011eeeebbb41111000bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b7770ff444004ff400444ff044004ff400444ff0bbbee01111144444411110011eeeebbb11444400bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b7770f2222244ff4442222ff22444ff4444422ffbbbee044441144441144440e99eeebbb44222200bb777777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b770044107444ff44410742f22244ff44422242fbbbe0422222444442222220e40eeebbb447070207777777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b770f4a100aaffff4a100aff0022ffff422004ffbbee0440707444444070724040eebebb447000407077777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b770fff4444ffffff4444fff444ffffff4444fffbbee0440007444444000744440eeeebb44444440b7b7b7b7b7bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b770ffffffffffaffffffff4bbbbbbbbbbbbbbbbbbee0044444444444444444000eebebbbbbbbbbbbbb77bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b77704ffffffffaffffffff4bbbbbbbbbbbbbbbbbeee0044444404444444444000eeebbbbbbbbbbbbb770bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b777044fffff0faf0ffff444bbbbbbbbbbbbbbbbbebe0004444404440444444000eeebbbbbbbbbbbbbb77bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-b777044444000faf00044420bbbbbbbbbbbbbbbbbeee0044444094440044444040eeebbbbbbbbbbbbbb77777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-bbb702244200ff4ff0044220bbbbbbbbbbbbbbbbbeee004444904444404444400eeebbbbbbbbbbbbbbb7777777bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-bbb7b0222200000000222200bbbbbbbbbbbbbbbbbeeebb0444400000004444409eeebbbbbbbbbbbbbbb7b7b7b7bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-bbbbb000000f40004f000040bbbbbbbbbbbbbbbbbbbeee0444444000444444001eeebbbbbbbbbbbbbbbbb7bbb7bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-bbbbb04420ff44444ff04440bbbbbbbbbbbbbbbbbbbbeb04444444444444440beeeebbbbbbbbbbbbbbbbb7bbb7bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+b77770ffffffffffffffff07ffffffffffffff07bbbee0e0000000ee0000e001eeeeebbb4440400ebbbbbbbbbbbbbbbbbbbbb33222bbbbbbbbbbbbbbbbbbbbbb
+b77700f0000ffffff0000ff0000ffffff0000ff0bbbee04400004444444040011eeeebbb41111000bbbbbbbbbbbbbbbbbbb22322b2223bbbbbbbbbbbbbbbbbbb
+b7770ff444004ff400444ff044004ff400444ff0bbbee01111144444411110011eeeebbb11444400bbbbbbbbbbbbbbbbbb22b3bbbbb23bbbbbbbb33222bbbbbb
+b7770f2222244ff4442222ff22444ff4444422ffbbbee044441144441144440e99eeebbb44222200bb777777777bbbbbbb2bb3bbbbbb2bbbbbb22322b2223bbb
+b770044107444ff44410742f22244ff44422242fbbbe0422222444442222220e40eeebbb447070207777777777bbbbbbbb2bbbbbbbbb22bbbb22b3bbbbb23bbb
+b770f4a100aaffff4a100aff0022ffff422004ffbbee0440707444444070724040eebebb447000407077777777bbbbbbb2bbbbbbbbbbb2bbbb2bb3bbbbbb2bbb
+b770fff4444ffffff4444fff444ffffff4444fffbbee0440007444444000744440eeeebb44444440b7b7b7b7b7bbbbbbb2bbbbbbbbbbb2bbbb2bbbbbbbbb22bb
+b770ffffffffffaffffffff4bbbbbbbbbbbbbbbbbbee0044444444444444444000eebebbbbbbbbbbbbb77bbbbbbbbbbbb2bbbbbbbbbbb2bbb2bbbbbbbbbb2bbb
+b77704ffffffffaffffffff4bbbbbbbbbbbbbbbbbeee0044444404444444444000eeebbbbbbbbbbbbb770bbbbbbbbbbbb2bbbbbbbbbbbb2bb2bbbbbbbbbbb2bb
+b777044fffff0faf0ffff444bbbbbbbbbbbbbbbbbebe0004444404440444444000eeebbbbbbbbbbbbbb77bbbbbbbbbbbb2bbbbbbbbbbbb2bb2bbbbbbbbbbb2bb
+b777044444000faf00044420bbbbbbbbbbbbbbbbbeee0044444094440044444040eeebbbbbbbbbbbbbb77777777bbbbbb2bbbbbbbbbbbb2bb2bbbbbbbbbbb2bb
+bbb702244200ff4ff0044220bbbbbbbbbbbbbbbbbeee004444904444404444400eeebbbbbbbbbbbbbbb7777777bbbbbbb2bbbbbbbbbbbb2bb2bbbbbbbbbbb2bb
+bbb7b0222200000000222200bbbbbbbbbbbbbbbbbeeebb0444400000004444409eeebbbbbbbbbbbbbbb7b7b7b7bbbbbbb2bbbbbbbbbbbb2bb3b3bbbbbb3b33bb
+bbbbb000000f40004f000040bbbbbbbbbbbbbbbbbbbeee0444444000444444001eeebbbbbbbbbbbbbbbbb7bbb7bbbbbbb3b3bbbbbbb3b33b33333b333b333333
+bbbbb04420ff44444ff04440bbbbbbbbbbbbbbbbbbbbeb04444444444444440beeeebbbbbbbbbbbbbbbbb7bbb7bbbbbb33333b3333b33333bbbbbbbbbbbbbbbb
 bbbbb04ffff022f222ffff40fff22222222fff40bbbbbb00444022000044440bbbbbbbbbbbbbbbbbbbb77bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 bbbbb00fff022222220ffff0ff220000002ffff0bbbbbbb0440222222204400bbbbbbbbbbbbbbbbbbb770bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 bbbbbb00fff0000000ffff00fff22000022fff00bbbbbbbb04400000004440bbbbbbbbbbbbbbbbbbbbb77bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
