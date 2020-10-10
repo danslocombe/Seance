@@ -51,29 +51,14 @@ function _init()
   cls(0)
 
   global_state = init_dead()
+  init_digital(global_state)
+  --init_rainbow_5(global_state)
+  --init_bigface(global_state)
+  --init_sea_0(global_state)
   --init_bedroom(global_state)
-  local diag_consts = {
-    x1 = 1/8,
-    y1 = 1/4,
-    c1 = 25,
-    x2 = 0.7/8,
-    y2 = 1.3/4,
-    c2 = 27,
-  }
-  local diag_consts2 = {
-    x1 = 1/100,
-    y1 = 1/4,
-    c1 = 18,
-    x2 = 0.7/16,
-    y2 = 1.3/4,
-    c2 = 24,
-  }
-  init_sea(global_state, {diag=diag_consts, make_next = function()
-    local s = init_dead()
-    init_sea(s, {diag=diag_consts2, add_cave=true})
-    return s
-  end})
-  --init_rainbow(global_state)
+  --init_sea_0(global_state)
+  --init_rainbow_0(global_state)
+  --init_crossroads(global_state)
   --global_state = make_perlin_sample_trans(global_state)
   --init_sea(global_state)
   --init_noise(global_state)
@@ -590,7 +575,7 @@ function init_mountain(state)
     init = function()
       -- transition
       local s = init_dead()
-      init_sea(s)
+      init_sea_0(s)
       --init_crossroads(s)
       return make_noise_transition(s)
     end,
@@ -839,7 +824,7 @@ function init_crossroads(state)
     o.xflip = ((state.t / k) % 2 < 1)
   end)
 
-  local day = 1
+  local day = 2
 
   if day == 1 then
     add_obj(12, 60, 64, {"quack"}) 
@@ -1058,9 +1043,147 @@ function init_noise(state)
   add(state.drawables, bgdraw)
 end
 
-function init_rainbow(state)
+function init_digital(state)
   cls(0)
-  music(0)
+  state.disable_cls = true
+  add(state.dialogue, ".")
+  add(state.dialogue, ".")
+  add(state.drawables, {
+    p = make_perlin(32, 32),
+    y = 0,
+    draw = function(o, s)
+      for x=0,128 do
+        for y=0,128 do
+          if rnd() < 0.01 then
+            local col = 10*sample_perlin(o.p, x, y, 1)
+            rectfill(x, y, x+1, y+1, col)
+          end
+        end
+      end
+    end
+  })
+end
+
+function init_bigface(state)
+  cls(0)
+  state.disable_cls = true
+  stop_sfx()
+  state.player.y = 110
+
+  add(state.dialogue, ".")
+  add(state.dialogue, ".")
+  local facedraw = {
+     x = 0,
+     y = 0,
+     face_angle = 0.75,
+     face_mod = 0,
+     face_mod_d = 0,
+     face_scale = 2,
+     update = function(o, s)
+       o.face_mod += 0.002
+     end,
+     draw = function(o, s)
+       local face_sprite_x = 0
+       local face_sprite_y = 32
+       local face_x = 64 - o.face_scale*12
+       local face_y = 64 - o.face_scale*16
+       rspr(face_sprite_x,face_sprite_y,face_x,face_y,24,32,o.face_scale,o.face_angle, o.face_mod, o.face_mod_d, 11)
+
+        if state.debug then
+          print(stat(7), 10, 10, 7)
+        end
+     end
+    }
+
+    add(state.objects, facedraw)
+    add(state.drawables, facedraw)
+end
+
+function stop_sfx()
+  sfx(-1,0)
+  sfx(-1,1)
+  sfx(-1,2)
+  sfx(-1,3)
+end
+
+function init_rainbow_0(s0)
+  init_rainbow(s0, {make_next=make_init_fn(init_rainbow_1),
+  initfn = function()
+    stop_sfx()
+    music(0)
+  end,
+  diagfun=function(x,y,t)
+    return -0.36 * ((64 - x)  + (y) / 2) / 4 + 10
+  end,
+  })
+end
+
+function make_init_fn(initfn)
+  return function()
+    local s = init_dead()
+    initfn(s)
+    return s
+  end
+end
+
+function init_rainbow_1(s)
+  init_rainbow(s, {make_next=make_init_fn(init_rainbow_2),
+  diagfun=function(x,y,t)
+    return sqr((x-64) +(y-64)) / 1000
+  end})
+end
+
+function init_rainbow_2(s)
+  init_rainbow(s, {make_next=make_init_fn(init_rainbow_3),
+  diagfun=function(x,y,t)
+    return t / 100
+  end})
+end
+
+function init_rainbow_3(s)
+  init_rainbow(s, {make_next=function()
+    local s = make_init_fn(init_rainbow_4)()
+    return make_noise_transition(s)
+  end,
+  initfn = function()
+    music(1)
+  end,
+  diagfun=function(x,y,t)
+    --local sinsin = sin(t * 0.03125 / 2)
+    local sinsin = sin(t * 0.01125 / 2)
+    if (sinsin > 0) then
+      return 10 * sin(x / 50 + y / 50) * sinsin
+    else
+      return 10 * sin(x / 50 - y / 50) * sinsin
+    end
+  end})
+end
+
+function init_rainbow_4(s)
+  init_rainbow(s, {make_next=make_init_fn(init_rainbow_5),
+  diagfun=function(x,y,t)
+    --local sinsin = sin(t * 0.03125 / 2)
+    local sinsin = sin(t * 0.01125 / 2)
+    return (x+y)*(1+sqr(sinsin)) / 20
+  end})
+end
+
+function init_rainbow_5(s)
+  init_rainbow(s, {make_next=make_init_fn(init_bigface),
+  diagfun=function(x,y,t)
+    local sinsin = (1 + 0.05 * sin(t * 0.03125 / 2))
+    return sinsin*sqrt(sqr(64-x)+sqr(64-y)) / 10
+  end})
+end
+
+function init_rainbow(state, config)
+  cls(0)
+  --music(0)
+
+  if config.initfn != nil then
+    config.initfn()
+  end
+
   state.disable_cls = true
 
   add(state.dialogue, ".")
@@ -1071,6 +1194,13 @@ function init_rainbow(state)
   local perlin = make_perlin(5, 5)
   --local precomp = precomp_perlin(perlin)
   local precomp = {w=128,h=128,points={},i=0,max=128*128}
+
+  state.goto_next = {
+    test = function(state)
+      return state.player.x > 130
+    end,
+    init = config.make_next,
+  }
 
   local bgdraw = {
     x = 0,
@@ -1109,7 +1239,7 @@ function init_rainbow(state)
         --return sqr(x/8 + y / 4) / 80
       end
 
-      local diagfun = diagfunfov
+      local diagfun = config.diagfun
 
       local diagplayer = diagfun(state.player.x, state.player.y, o.t)
       local player_height = sample_precomp_perlin(o.precomp, flr(state.player.x), flr(state.player.y), o.t) + diagplayer
@@ -1138,6 +1268,30 @@ function init_rainbow(state)
 
   add(state.objects, bgdraw)
   add(state.drawables, bgdraw)
+end
+
+function init_sea_0(s0)
+  local diag_consts = {
+    x1 = 1/8,
+    y1 = 1/4,
+    c1 = 25,
+    x2 = 0.7/8,
+    y2 = 1.3/4,
+    c2 = 27,
+  }
+  local diag_consts2 = {
+    x1 = 1/100,
+    y1 = 1/4,
+    c1 = 18,
+    x2 = 0.7/16,
+    y2 = 1.3/4,
+    c2 = 24,
+  }
+  init_sea(s0, {diag=diag_consts2, make_next = function()
+    local s = init_dead()
+    init_sea(s, {diag=diag_consts, add_cave=true})
+    return s
+  end})
 end
 
 function init_sea(state, config)
@@ -1185,13 +1339,21 @@ function init_sea_perlin(state, wave1_precomp, wave2_precomp, config)
   if make_next == nil then
     make_next = function()
       local s = init_dead()
-      init_rainbow(s)
+      init_rainbow_0(s)
       return make_noise_transition(s)
     end
   end
 
+  local cave_x = 115-20
+  local cave_y = 15
+
   state.goto_next = {
     test = function(state)
+      if config.add_cave then
+        local cave_dist = sqrt(sqr(state.player.x - cave_x) + sqr(state.player.y - cave_y))
+        return cave_dist < 6
+      end
+
       return state.player.x > 130
     end,
     init = make_next,
@@ -1488,8 +1650,8 @@ function init_sea_perlin(state, wave1_precomp, wave2_precomp, config)
 
   if config.add_cave then
     add(state.drawables, {
-      x = 20,
-      y = 20,
+      x = cave_x-8,
+      y = cave_y-8,
       draw = function(o, state)
         palt(11, true)
         palt(0, false)
@@ -1900,13 +2062,14 @@ function rspr(sx, sy, tx, ty, w, h, scale, a, modp, modd, bgcol)
   local buffer = 0
   for y=-buffer,kh-1+buffer do
     for x=-buffer,kw-1+buffer do
-      local d_tx = x - kw/2
-      local d_ty = y - kh/2
-      local dist = modd + sqrt((d_tx * d_tx) + (d_ty * d_ty)) / k
-      local angle = atan2(d_ty, d_tx)
-      local sample_angle = (a + modp * angle) -- + rnd(0.005))
-      sget_x = (sx_mid + dist*cos(sample_angle))
-      sget_y = (sy_mid + dist*sin(sample_angle))
+      if rnd() < 0.15 then
+        local d_tx = x - kw/2
+        local d_ty = y - kh/2
+        local dist = modd + sqrt((d_tx * d_tx) + (d_ty * d_ty)) / k
+        local angle = atan2(d_ty, d_tx)
+        local sample_angle = (a + modp * angle) -- + rnd(0.005))
+        sget_x = (sx_mid + dist*cos(sample_angle))
+        sget_y = (sy_mid + dist*sin(sample_angle))
 
         if sget_x >= sx and sget_x <= sx + w and sget_y >= sy and sget_y <= sy + h then
           local col = sget(sget_x, sget_y)
@@ -1915,6 +2078,7 @@ function rspr(sx, sy, tx, ty, w, h, scale, a, modp, modd, bgcol)
             pset(tx + x, ty + y, col)
           end
         end
+      end
     end
   end
 end
