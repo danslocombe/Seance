@@ -29,6 +29,8 @@ __lua__
 -- only come out at night like a gay vampire
 -- "Even if he would like to go into a dream, an error takes place. Even if he would like to go into a dream, an error takes place." 
 
+-- snoring snoring
+--
 -- 
 -- disco elysium style inner voices talking to you
 -- 
@@ -51,9 +53,9 @@ function _init()
   cls(0)
 
   global_state = init_dead()
-  init_digital(global_state)
-  --init_rainbow_5(global_state)
-  --init_bigface(global_state)
+  --init_digital(global_state)
+  --init_rainbow_0(global_state)
+  init_bigface(global_state)
   --init_sea_0(global_state)
   --init_bedroom(global_state)
   --init_sea_0(global_state)
@@ -542,7 +544,7 @@ function init_house_walk(state)
 
   state.goto_next = {
     test = function(state)
-      return state.player.y > 64 and state.player.x > 120
+      return state.player.y > 16 and state.player.x > 120
     end,
     init = function()
       -- transition
@@ -707,6 +709,33 @@ function init_mountain(state)
 
   --add_sign(10, 50, {"saint waningus\'", "garden of smells"})
 end
+local add_obj = function(state, sprite, x, y, text, update)
+  local s = {
+    s = sprite,
+    x = x,
+    y = y,
+    xflip = false,
+    text = text,
+    draw = function(o, state)
+      palt(11, true)
+      palt(0, false)
+      spr(o.s, o.x - 4, o.y - 4, 1, 1, o.xflip)
+      palt()
+    end,
+    update = update,
+  }
+
+  local scol = {
+    x = x-2,
+    y = y-2,
+    w = 4,
+    h = 4,
+  }
+
+  add(state.objects, s)
+  add(state.drawables, s)
+  add(state.cols, scol)
+end
 
 function init_crossroads(state)
   add(state.dialogue, ".")
@@ -753,57 +782,30 @@ function init_crossroads(state)
 
   add(state.drawables, bgdraw)
 
-  local add_obj = function(sprite, x, y, text, update)
-    local s = {
-      s = sprite,
-      x = x,
-      y = y,
-      xflip = false,
-      text = text,
-      draw = function(o, state)
-        palt(11, true)
-        palt(0, false)
-        spr(o.s, o.x - 4, o.y - 4, 1, 1, o.xflip)
-        palt()
-      end,
-      update = update,
-    }
-
-    local scol = {
-      x = x-2,
-      y = y-2,
-      w = 4,
-      h = 4,
-    }
-
-    add(state.objects, s)
-    add(state.drawables, s)
-    add(state.cols, scol)
-  end
 
   add_tree(state, 15, 18, 2)
   add_tree(state, 6, 45, 2, true)
   add_tree(state, 110, 110, 3)
 
   -- sign
-  add_obj(24, 8, 60, {"saint waningus\'", "garden of smells"})
-  add_obj(24, 120, 60, {"saint david\'s", "conservatory of sounds"})
-  add_obj(24, 60, 120, {"saint marks\'s", "shed of sights"})
+  add_obj(state, 24, 8, 60, {"saint waningus\'", "garden of smells"})
+  add_obj(state, 24, 120, 60, {"saint david\'s", "conservatory of sounds"})
+  add_obj(state, 24, 60, 120, {"saint marks\'s", "shed of sights"})
 
 -- 
-  add_obj(28, 44, 80, {"what is a coralrrafk?", "wait it costs HOW much?"}, function(o, state)
-    --o.s = 28 + flr((state.t / 2) % 2)
-    local k = 32
-    if (state.t / k) % 1 < 0.5 then
-      o.text[2] = "wait it costs HOW much?"
-      --o.s = 29
-    else
-      o.text[2] = "wait it costs how much?"
-      o.s = 28
-    end
-    o.xflip = ((state.t / k) % 2 < 1)
-  end)
-  add_obj(60, 78, 40, {"this crime is piping hot"}, function(o, state)
+  --add_obj(state, 28, 44, 80, {"what is a coralrrafk?", "wait it costs HOW much?"}, function(o, state)
+  --  --o.s = 28 + flr((state.t / 2) % 2)
+  --  local k = 32
+  --  if (state.t / k) % 1 < 0.5 then
+  --    o.text[2] = "wait it costs HOW much?"
+  --    --o.s = 29
+  --  else
+  --    o.text[2] = "wait it costs how much?"
+  --    o.s = 28
+  --  end
+  --  o.xflip = ((state.t / k) % 2 < 1)
+  --end)
+  add_obj(state, 60, 78, 40, {"this crime is piping hot"}, function(o, state)
     --o.s = 28 + flr((state.t / 2) % 2)
     local k = 256
     if (state.t + 200 / k) % 1 < 0.02 then
@@ -813,40 +815,30 @@ function init_crossroads(state)
     end
     o.xflip = ((state.t / k) % 2 < 1)
   end)
-  add_obj(28, 74, 80, {"snoring", "snoring", "four in the morning"}, function(o, state)
-    --o.s = 28 + flr((state.t / 2) % 2)
-    local k = 256
-    if (state.t / k) % 1 < 0.02 then
-      --o.s = 29
-    else
-      o.s = 28
-    end
-    o.xflip = ((state.t / k) % 2 < 1)
-  end)
 
-  local day = 2
+  local day = 1
 
   if day == 1 then
     add_obj(12, 60, 64, {"quack"}) 
   elseif day == 2 then
-    local facedraw = {
-       x = 0,
-       y = 0,
-       face_angle = 0,
-       face_mod = 0,
-       face_mod_d = 0,
-       face_scale = 1,
-       update = function(o, s)
-         o.face_mod += 0.001
-       end,
-       draw = function(o, s)
-         local face_sprite_x = 0
-         local face_sprite_y = 64 
-         local face_x = 64 - o.face_scale*12
-         local face_y = 64 - o.face_scale*16
-         rspr(face_sprite_x,face_sprite_y,face_x,face_y,24,32,o.face_scale,o.face_angle, o.face_mod, o.face_mod_d, 11)
-       end
-    }
+    --local facedraw = {
+    --   x = 0,
+    --   y = 0,
+    --   face_angle = 0,
+    --   face_mod = 0,
+    --   face_mod_d = 0,
+    --   face_scale = 1,
+    --   update = function(o, s)
+    --     o.face_mod += 0.001
+    --   end,
+    --   draw = function(o, s)
+    --     local face_sprite_x = 0
+    --     local face_sprite_y = 64 
+    --     local face_x = 64 - o.face_scale*12
+    --     local face_y = 64 - o.face_scale*16
+    --     rspr(face_sprite_x,face_sprite_y,face_x,face_y,24,32,o.face_scale,o.face_angle, o.face_mod, o.face_mod_d, 11)
+    --   end
+    --}
 
     add(state.objects, facedraw)
     add(state.drawables, facedraw)
@@ -1045,7 +1037,27 @@ end
 
 function init_digital(state)
   cls(0)
+  state.goto_next = {
+    test = function(state)
+      return state.player.y < 3
+    end,
+    init = make_init_fn(init_bigface)
+  }
   state.disable_cls = true
+  state.player.x = 58
+  state.player.y = 118
+  add_obj(state, 28, 50, 60, {"what is a coralrrafk?", "wait it costs HOW much?"}, function(o, state)
+    --o.s = 28 + flr((state.t / 2) % 2)
+    local k = 32
+    if (state.t / k) % 1 < 0.5 then
+      o.text[2] = "wait it costs HOW much?"
+      --o.s = 29
+    else
+      o.text[2] = "wait it costs how much?"
+      o.s = 28
+    end
+    o.xflip = ((state.t / k) % 2 < 1)
+  end)
   add(state.dialogue, ".")
   add(state.dialogue, ".")
   add(state.drawables, {
@@ -1055,7 +1067,16 @@ function init_digital(state)
       for x=0,128 do
         for y=0,128 do
           if rnd() < 0.01 then
-            local col = 10*sample_perlin(o.p, x, y, 1)
+            --local col = x + y % 8 
+            local col = rnd(4)
+            if x > 0 and (x % 6 == 0 or y % 6 == 0) then
+              col = 15
+            end
+
+            if x > 32 + 10 and x < 64 then
+              col = 0
+            end
+
             rectfill(x, y, x+1, y+1, col)
           end
         end
@@ -1070,23 +1091,23 @@ function init_bigface(state)
   stop_sfx()
   state.player.y = 110
 
-  add(state.dialogue, ".")
-  add(state.dialogue, ".")
+  add(state.dialogue, "snoring")
+  add(state.dialogue, "snoring")
   local facedraw = {
      x = 0,
      y = 0,
      face_angle = 0.75,
      face_mod = 0,
      face_mod_d = 0,
-     face_scale = 2,
+     face_scale = 2.25,
      update = function(o, s)
        o.face_mod += 0.002
      end,
      draw = function(o, s)
        local face_sprite_x = 0
        local face_sprite_y = 32
-       local face_x = 64 - o.face_scale*12
-       local face_y = 64 - o.face_scale*16
+       local face_x = 64 - o.face_scale*12 + rnd(2)
+       local face_y = 64 - o.face_scale*16 + rnd(2)
        rspr(face_sprite_x,face_sprite_y,face_x,face_y,24,32,o.face_scale,o.face_angle, o.face_mod, o.face_mod_d, 11)
 
         if state.debug then
@@ -1128,6 +1149,18 @@ end
 
 function init_rainbow_1(s)
   init_rainbow(s, {make_next=make_init_fn(init_rainbow_2),
+  initfn = function(s)
+    add_obj(s, 28, 74, 80, {"snoring", "snoring", "four in the morning"}, function(o, state)
+      --o.s = 28 + flr((state.t / 2) % 2)
+      local k = 256
+      if (state.t / k) % 1 < 0.02 then
+        --o.s = 29
+      else
+        o.s = 28
+      end
+      o.xflip = ((state.t / k) % 2 < 1)
+    end)
+  end,
   diagfun=function(x,y,t)
     return sqr((x-64) +(y-64)) / 1000
   end})
@@ -1160,19 +1193,11 @@ function init_rainbow_3(s)
 end
 
 function init_rainbow_4(s)
-  init_rainbow(s, {make_next=make_init_fn(init_rainbow_5),
+  init_rainbow(s, {make_next=make_init_fn(init_digital),
   diagfun=function(x,y,t)
     --local sinsin = sin(t * 0.03125 / 2)
     local sinsin = sin(t * 0.01125 / 2)
     return (x+y)*(1+sqr(sinsin)) / 20
-  end})
-end
-
-function init_rainbow_5(s)
-  init_rainbow(s, {make_next=make_init_fn(init_bigface),
-  diagfun=function(x,y,t)
-    local sinsin = (1 + 0.05 * sin(t * 0.03125 / 2))
-    return sinsin*sqrt(sqr(64-x)+sqr(64-y)) / 10
   end})
 end
 
@@ -1181,7 +1206,7 @@ function init_rainbow(state, config)
   --music(0)
 
   if config.initfn != nil then
-    config.initfn()
+    config.initfn(state)
   end
 
   state.disable_cls = true
@@ -1197,7 +1222,7 @@ function init_rainbow(state, config)
 
   state.goto_next = {
     test = function(state)
-      return state.player.x > 130
+      return state.player.x > 130 or state.player.y < -2
     end,
     init = config.make_next,
   }
@@ -1428,7 +1453,7 @@ function init_sea_perlin(state, wave1_precomp, wave2_precomp, config)
 
   local bgdraw = {
     x = 0,
-    y = 0,
+    y = 30,
     t = 0,
     --perlin = perlin,
     --precomp = precomp_perlin(perlin),
