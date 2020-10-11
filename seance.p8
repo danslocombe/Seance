@@ -53,11 +53,12 @@ function _init()
   cls(0)
 
   global_state = init_dead()
+  --init_bedroom(global_state)
+  --init_house_walk(global_state)
   --init_digital(global_state)
   --init_rainbow_0(global_state)
   init_bigface(global_state)
   --init_sea_0(global_state)
-  --init_bedroom(global_state)
   --init_sea_0(global_state)
   --init_rainbow_0(global_state)
   --init_crossroads(global_state)
@@ -1061,7 +1062,6 @@ function init_digital(state)
   add(state.dialogue, ".")
   add(state.dialogue, ".")
   add(state.drawables, {
-    p = make_perlin(32, 32),
     y = 0,
     draw = function(o, s)
       for x=0,128 do
@@ -1087,12 +1087,14 @@ end
 
 function init_bigface(state)
   cls(0)
+  music(7)
   state.disable_cls = true
   stop_sfx()
   state.player.y = 110
 
   add(state.dialogue, "snoring")
   add(state.dialogue, "snoring")
+
   local facedraw = {
      x = 0,
      y = 0,
@@ -1114,10 +1116,27 @@ function init_bigface(state)
           print(stat(7), 10, 10, 7)
         end
      end
-    }
+  }
 
-    add(state.objects, facedraw)
-    add(state.drawables, facedraw)
+  local foreground = {
+    t = 0,
+    x = 0,
+    y = 129,
+    draw = function(o,s)
+      --for y=0,128 do
+      --  for x=0,128 do
+      --    if rnd() < 0.005 then
+      --      rectfill(x, y, x+1, y+1, 1)
+      --    end
+      --  end
+      --end
+    end
+  }
+
+  add(state.objects, facedraw)
+  add(state.drawables, facedraw)
+  add(state.objects, foreground)
+  add(state.drawables, foreground)
 end
 
 function stop_sfx()
@@ -1167,7 +1186,10 @@ function init_rainbow_1(s)
 end
 
 function init_rainbow_2(s)
-  init_rainbow(s, {make_next=make_init_fn(init_rainbow_3),
+  init_rainbow(s, {make_next=function()
+    local s = make_init_fn(init_rainbow_3)()
+    return make_noise_transition(s)
+  end,
   diagfun=function(x,y,t)
     return t / 100
   end})
@@ -1312,7 +1334,7 @@ function init_sea_0(s0)
     y2 = 1.3/4,
     c2 = 24,
   }
-  init_sea(s0, {diag=diag_consts2, make_next = function()
+  init_sea(s0, {diag=diag_consts2, add_duck=true, make_next = function()
     local s = init_dead()
     init_sea(s, {diag=diag_consts, add_cave=true})
     return s
@@ -1371,6 +1393,13 @@ function init_sea_perlin(state, wave1_precomp, wave2_precomp, config)
 
   local cave_x = 115-20
   local cave_y = 15
+
+  if config.add_duck then
+    add_obj(state, 38, 60, 64, {"quack"}, function(o,s)
+      o.x = 60+5*state.waves[1].p
+      o.y = 100 - 10*sqr(max(state.waves[1].p,state.waves[2].p))
+    end) 
+  end
 
   state.goto_next = {
     test = function(state)
@@ -1450,6 +1479,7 @@ function init_sea_perlin(state, wave1_precomp, wave2_precomp, config)
   waves[2].vel = waves[2].back_vel
   waves[2].state = -1
   waves[2].precomp = wave2_precomp
+  state.waves = waves
 
   local bgdraw = {
     x = 0,
@@ -1968,88 +1998,8 @@ function draw_dead(state)
   end
 end
 
-function draw_phasein(state)
-  --local pat_speed = sqrt(state.phase_col
-  if (state.noise_mag > 0) then
-    cls(0)
-    dump_noise(state.noise_mag)
-  else
-    local pat = generate_fillp(state.t, 32, state.phase_bg_bits, false)
-    fillp(pat)
-    rectfill(0, 0, 128, 128, state.phase_col)
-    fillp()
-
-    --rectfill(0, text_y - 2, 128, text_y + 8, 0)
-    rectfill(0, state.phase_text_y, 128, state.phase_text_y + 4, 0)
-
-  end
-end
-
-function draw_talking(state)
-
-  local text_y = dialogue_y
-
-  if (state.s > 0) then
-    cls(0)
-    draw_scene(state)
-  else
-    text_y = state.phase_text_y
-    draw_phasein(state)
-  end
-
-  if state.text != nil then
-    draw_text(state.dialogue_t * text_speed, state.text, 4, text_y, 7, 5)
-  end
-
-  -- face
-  if state.draw_face then
-    local face_x = 95 - state.face_scale*12
-    local face_y = 35 - state.face_scale*16
-    rspr(state.face_sprite_x,state.face_sprite_y,face_x,face_y,24,32,state.face_scale,state.face_angle, state.face_mod, state.face_mod_d, 11)
-
-    local mouth_move_mult = 0.66
-    local mouth_move_rate = 28
-    if state.text != nil and state.dialogue_t * text_speed * mouth_move_mult < #state.text then
-      if state.s > 0 and state.t % mouth_move_rate < mouth_move_rate/2 then
-        rspr(24,32,face_x + 1, face_y, 16,32, state.face_scale, state.face_angle, state.face_mod, state.face_mod_d, 11)
-      end
-    end
-  end
-end
-
-function init_intro()
-  s = {
-    t = 0,
-    s = 0,
-    complete = 160,
-    updatefn = update_intro,
-    drawfn = draw_intro,
-  }
-
-  return s
-end
-
-function update_intro(state)
-  state.t += 1
-
-  if action_pressed() then
-    if state.t < state.complete then
-      state.t = state.complete
-    else
-      state.t = 0
-      state.s += 1
-    end
-  end
-
-  if state.s >= 3 then
-    cls(0)
-    return init_talking()
-  end
-end
-
-
 function draw_text(t, text, x, y, col, sfx_id)
-  if sfx_id != nil and t < #text then
+  if sfx_id != nil and t < #text and flr(t) % 2 == 0 then
     sfx(sfx_id)
   end
   local s = sub(text, 1, max(0, min(t, #text)))
@@ -2278,10 +2228,10 @@ bbbb3bbbbb44444bb444444bbb4bb4bbb444444bbd4dddbbbbfddfbbbbfeefbbbb2bb2bbbbbbbbbb
 bbbb3bbbbb44444bbbbbbbbbbb4bb4bbbbbbbbbbbddddbbbbbddddbbbbeeeebbbb2bb2bb222222222222222222222222bbbbbbbbbbbbbbbbbbbbbbbbbb222bbb
 bbbbbbbbbbbbbbbb555555550bbbbbbbbbbbbbbbbbb000bbbbbbbbbbbbbbbbbbbbbbbbbb222222222222222222222b22bbbb2bbbbbbbbbbbbbbbbbbbbbbb22bb
 d4d4d444444d4d4dbbbb5bbbb0bb33b0bbbbbbbbbb0040bbbbbbbbbbbbbbbbbbbbbb8bbb22222222222222222222bbb2bbbb2bbbbbbbbbbbbb22bbbbbbbb222b
-dddddbbbbbbdddddbbbb5bbbbb03330bbbbbbbbbbbb44bbbbbbbbbbbbbbbbbbbbbb888bb22bbbbbbbbbbbbbbbbbbbbb2bbbb2bbbbbbb2b2bb222222bbbbb2bbb
-dddddbbbbbbddddd55555555bbb433bbbbbbbbbbbb3333bbbbbbbbbbbbbbbbbbbbb888bb22bbbbbbbbbbbbbbbbbbbbb2bbbb2bbbbb22222bbb2222bbbb22222b
-ddddbbbbbbbbddddb5bbbbbbbbb433bbbbbbbbbbbb3333bbbbbbbbbbbbbbbbbbbbb3bbbb22222222bbbbbbbb2b22b222bbbb2bbbb22222bbbbbb22bbbbbb2bbb
-dbdbbbbbbbbbbdddb5bbbbbbbbbb3bbbbbbbbbbbbb4333bbbbbbbbbbbbbbbbbbbbbb3bbb222222222222222222222222bbbb2bbbbb2222bbbbbbb2bbbbbb2bbb
+dddddbbbbbbdddddbbbb5bbbbb03330bbbbbbbbbbbb44bbbbb77bbbbbbbbbbbbbbb888bb22bbbbbbbbbbbbbbbbbbbbb2bbbb2bbbbbbb2b2bb222222bbbbb2bbb
+dddddbbbbbbddddd55555555bbb433bbbbbbbbbbbb3333bbb777bbbbbbbbbbbbbbb888bb22bbbbbbbbbbbbbbbbbbbbb2bbbb2bbbbb22222bbb2222bbbb22222b
+ddddbbbbbbbbddddb5bbbbbbbbb433bbbbbbbbbbbb3333bbbb77777bbbbbbbbbbbb3bbbb22222222bbbbbbbb2b22b222bbbb2bbbb22222bbbbbb22bbbbbb2bbb
+dbdbbbbbbbbbbdddb5bbbbbbbbbb3bbbbbbbbbbbbb4333bbbb7777bbbbbbbbbbbbbb3bbb222222222222222222222222bbbb2bbbbb2222bbbbbbb2bbbbbb2bbb
 dddbbbbbbbbbbdddbbbbbbbbbbbb3bbbbbbbbbbbbb4555bbbbbbbbbbbbbbbbbbbbbb3bbb22bbbbbbbbbbbbbbbbbbbb22bbbb2bbbbbbbbbbbbbbbbbbbbbbb2bbb
 dddbbbbbbbbbbdddbbbbbbbbbbbbbbbbbbbbbbbbbb5555bbbbbbbbbbbbbbbbbbbbbb3bbb22b222222bbbbbbbbbbbbb22bbbb2bbbbbbbbbbbbbbbbbbbbb222bbb
 dddbbbbbbbbbbdddbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb22b2bbb22b22222bbbbbbb22bb111bbbbbbbbbbbbbbbbbbbbbbb222b
@@ -2513,8 +2463,9 @@ __sfx__
 000200002202021030130301304013040130401504013040130401404014040140401404015040150401503016030160301603016040160401604016040150401504014040150301504016040160501704016040
 011000000e3530223002230022300e35300000262301a2320e3531a2301a2301a2300e3531723006232062320e3530223002230022300e3530000002230022300e3530000000000000000e353000000e4531a453
 011000000e3530220002200022000e35300000262001a2020e3531a2001a2001a2000e3531720006202062020e3530220002200022000e3530000002200022000e3530000000000000000e353000000e4531a453
-001000000c6500e6501065011650116501165012650126501265013650146501565013650136501565017650176501b6501c6501e6501f6502165024650286502b6502d65027650236501b65016650136500f650
+001000200c6200e6201062011620116201162012620126201262013620146201562013620136201562017620176201b6201c6201e6201f6202162024620286202b6202d62027620236201b63016630136200f620
 001000011f6503900037000340003200030000300002c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+011300000235002250021500225002350024500215002250023500215002050023500215002350021500225002350021500225002050023500245002150020500245002250023500215002250020500215002050
 __music__
 03 02034344
 04 06074344
@@ -2523,5 +2474,5 @@ __music__
 03 4f0e5244
 03 4914154c
 03 19524b4c
-03 1a424344
+03 1c1a4344
 
