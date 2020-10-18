@@ -53,9 +53,14 @@ function _init()
   cls(0)
 
   global_state = init_dead()
-  --init_bedroom(global_state)
-  --init_rainbow_0(global_state)
-  init_bigface(global_state)
+  init_bedroom(global_state)
+  --init_rainbow_4(global_state)
+  --init_digital(global_state)
+
+  --init_bigface(global_state)
+  --global_state = bigface_trans(global_state)
+
+  --init_bigface(global_state)
   --init_house_walk(global_state)
   --init_digital(global_state)
   --init_rainbow_0(global_state)
@@ -740,114 +745,6 @@ local add_obj = function(state, sprite, x, y, text, update)
   add(state.cols, scol)
 end
 
-function init_crossroads(state)
-  add(state.dialogue, ".")
-  add(state.dialogue, ".")
-
-  music(-1)
-  music(0, 4000)
-
-  state.player.y = 4
-
-  local next_buf = 10
-  state.goto_next = {
-    test = function(state)
-      local y = state.player.y
-      local x = state.player.x
-      return y > 128 - next_buf or x < next_buf or x > 128 - next_buf
-    end,
-    init = function()
-      -- transition
-      local s = init_dead()
-      init_rose_garden(s)
-      return make_noise_transition(s)
-    end,
-  }
-
-  local bgdraw = {
-    y = 0,
-    draw = function(o, state)
-      --cls(0)
-      local col = 1 + flr(state.t / 64) % 2
-      col = 1
-      circfill(64, 64, 46, 2)
-      local pat = fill_bits(flr(8*(1 + sin(state.t / 400))))
-      fillp(pat)
-      circfill(64, 64, 50, col)
-      fillp()
-      --dump_noise(0.04)
-
-      circfill(64, 64, 13, 1)
-      circfill(58, 64, 11, 1)
-      circfill(72, 64, 11, 1)
-    end,
-  }
-
-  add(state.drawables, bgdraw)
-
-
-  add_tree(state, 15, 18, 2)
-  add_tree(state, 6, 45, 2, true)
-  add_tree(state, 110, 110, 3)
-
-  -- sign
-  add_obj(state, 24, 8, 60, {"saint waningus\'", "garden of smells"})
-  add_obj(state, 24, 120, 60, {"saint david\'s", "conservatory of sounds"})
-  add_obj(state, 24, 60, 120, {"saint marks\'s", "shed of sights"})
-
--- 
-  --add_obj(state, 28, 44, 80, {"what is a coralrrafk?", "wait it costs HOW much?"}, function(o, state)
-  --  --o.s = 28 + flr((state.t / 2) % 2)
-  --  local k = 32
-  --  if (state.t / k) % 1 < 0.5 then
-  --    o.text[2] = "wait it costs HOW much?"
-  --    --o.s = 29
-  --  else
-  --    o.text[2] = "wait it costs how much?"
-  --    o.s = 28
-  --  end
-  --  o.xflip = ((state.t / k) % 2 < 1)
-  --end)
-  add_obj(state, 60, 78, 40, {"this crime is piping hot"}, function(o, state)
-    --o.s = 28 + flr((state.t / 2) % 2)
-    local k = 256
-    if (state.t + 200 / k) % 1 < 0.02 then
-      --o.s = 29
-    else
-      o.s = 60
-    end
-    o.xflip = ((state.t / k) % 2 < 1)
-  end)
-
-  local day = 1
-
-  if day == 1 then
-    add_obj(12, 60, 64, {"quack"}) 
-  elseif day == 2 then
-    --local facedraw = {
-    --   x = 0,
-    --   y = 0,
-    --   face_angle = 0,
-    --   face_mod = 0,
-    --   face_mod_d = 0,
-    --   face_scale = 1,
-    --   update = function(o, s)
-    --     o.face_mod += 0.001
-    --   end,
-    --   draw = function(o, s)
-    --     local face_sprite_x = 0
-    --     local face_sprite_y = 64 
-    --     local face_x = 64 - o.face_scale*12
-    --     local face_y = 64 - o.face_scale*16
-    --     rspr(face_sprite_x,face_sprite_y,face_x,face_y,24,32,o.face_scale,o.face_angle, o.face_mod, o.face_mod_d, 11)
-    --   end
-    --}
-
-    add(state.objects, facedraw)
-    add(state.drawables, facedraw)
-  end
-end
-
 perlin_scale_k = 4   
 
 function make_perlin(w, h)
@@ -1044,7 +941,11 @@ function init_digital(state)
     test = function(state)
       return state.player.y < 3
     end,
-    init = make_init_fn(init_bigface)
+    init = function()
+      local s = init_dead()
+      init_bigface(s)
+      return bigface_trans(s)
+    end
   }
   state.disable_cls = true
   state.player.x = 58
@@ -1087,6 +988,32 @@ function init_digital(state)
   })
 end
 
+function bigface_trans(target_state)
+  return {
+    t = 0,
+    updatefn = function(s)
+      if s.t > 100 then
+        sfx(0)
+        return target_state
+      end
+      s.t+=1
+    end,
+    drawfn = function(s)
+      if rnd() < 0.01 then
+        dump_noise(0.1)
+      end
+      local face_scale = 2.25
+      local face_sprite_x = 0
+      local face_sprite_y = 32
+      local face_x = 64 - face_scale*12 + rnd(2)
+      local face_y = 64 - face_scale*16 + rnd(2)
+      local mod_angle = 0
+      local mod_dist = -10+s.t / 10
+      rspr(face_sprite_x,face_sprite_y,face_x, face_y, 24, 32, face_scale, 0.75, mod_angle, mod_dist, 11)
+    end,
+  }
+end
+
 function init_bigface(state)
   cls(0)
   music(7)
@@ -1104,19 +1031,35 @@ function init_bigface(state)
      face_mod = 0,
      face_mod_d = 0,
      face_scale = 2.25,
+     t = 0,
      update = function(o, s)
        o.face_mod += 0.002
+       o.t += 1
+       if o.t > 1150 then
+         sfx(30)
+        state.goto_next = {
+          test = function(state)
+            return true
+          end,
+          init = function()
+            local s = make_init_fn(init_bedroom)()
+            return make_noise_transition(s)
+        end,
+        }
+       end
      end,
      draw = function(o, s)
-       local face_sprite_x = 0
-       local face_sprite_y = 32
-       local face_x = 64 - o.face_scale*12 + rnd(2)
-       local face_y = 64 - o.face_scale*16 + rnd(2)
-       rspr(face_sprite_x,face_sprite_y,face_x,face_y,24,32,o.face_scale,o.face_angle, o.face_mod, o.face_mod_d, 11)
+       if o.t < 1000 then
+         local face_sprite_x = 0
+         local face_sprite_y = 32
+         local face_x = 64 - o.face_scale*12 + rnd(2)
+         local face_y = 64 - o.face_scale*16 + rnd(2)
+         rspr(face_sprite_x,face_sprite_y,face_x,face_y,24,32,o.face_scale,o.face_angle, o.face_mod, o.face_mod_d, 11)
 
-        if state.debug then
-          print(stat(7), 10, 10, 7)
-        end
+          if state.debug then
+            print(stat(7), 10, 10, 7)
+          end
+       end
      end
   }
 
@@ -1131,6 +1074,7 @@ function init_bigface(state)
     py = 0,
     col = 7,
     tt = 40,
+    sfx = 0,
     update = function(o,s)
       o.t += 1
     end,
@@ -1138,6 +1082,9 @@ function init_bigface(state)
       -- o.tt == 0.5 => 2 draws / frame
       -- o.tt == 2 => 0.5 draws / frame
       local count = 0
+      if o.t > o.tt then
+        sfx(o.sfx)
+      end
       while o.t > o.tt do
         print("snoring", o.px, o.py, o.col)
         o.py += 6
@@ -1153,9 +1100,11 @@ function init_bigface(state)
             --o.col += 1
             if o.col == 7 then
               o.col = 8
+              o.sfx = 29
             else 
               o.col = 0
               o.y = 200
+              o.sfx = 5
             end
           end
         end
@@ -1253,12 +1202,25 @@ end
 
 function init_rainbow_4(s)
   init_rainbow(s, {make_next=make_init_fn(init_digital),
-  diagfun=function(x,y,t)
-    --local sinsin = sin(t * 0.03125 / 2)
-    --local sinsin = sqr(sin(t * 0.01125 / 2)) * cos(t * 0.001)
-    local tt = t * 0.0008
-    return (sqrt(sqr(64-x) + sqr(64-y))/50) * sin(tt)/cos(tt) --(64 - x*x / 100)*(1+sinsin) / 20
-  end})
+    diagfun=function(x,y,t)
+      --local sinsin = sin(t * 0.03125 / 2)
+      --local sinsin = sqr(sin(t * 0.01125 / 2)) * cos(t * 0.001)
+      local tt = t * 0.0008
+      return (sqrt(sqr(64-x) + sqr(64-y))/50) * sin(tt)/cos(tt) --(64 - x*x / 100)*(1+sinsin) / 20
+    end
+  })
+
+  add_obj(s, 60, 65, 55, {"i dream of crime, piping hot"}, function(o, state)
+    --o.s = 28 + flr((state.t / 2) % 2)
+    local k = 256
+    if (state.t + 200 / k) % 1 < 0.02 then
+      --o.s = 29
+    else
+      o.s = 60
+    end
+    o.xflip = ((state.t / k) % 2 < 1)
+  end)
+
 end
 
 function init_rainbow(state, config)
@@ -2504,6 +2466,8 @@ __sfx__
 001000200c6200e6201062011620116201162012620126201262013620146201562013620136201562017620176201b6201c6201e6201f6202162024620286202b6202d62027620236201b63016630136200f620
 001000011f6503900037000340003200030000300002c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 011300000235002250021500225002350024500215002250023500215002050023500215002350021500225002350021500225002050023500245002150020500245002250023500215002250020500215002050
+010100001c050180501805034050340503405031000160002300022000210001f0001e0001b000170001600000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000400000a35009350073500635005350043500335002350013500135000350003500035000350003500025000250002500025000250002500025000250000500005000050000500005000050000500005000050
 __music__
 03 02034344
 04 06074344
