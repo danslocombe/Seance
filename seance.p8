@@ -54,10 +54,12 @@ function _init()
 
   global_state = init_dead()
   --init_bedroom(global_state)
+  --init_rainbow_0(global_state)
+  init_bigface(global_state)
   --init_house_walk(global_state)
   --init_digital(global_state)
   --init_rainbow_0(global_state)
-  init_bigface(global_state)
+  --init_bigface(global_state)
   --init_sea_0(global_state)
   --init_sea_0(global_state)
   --init_rainbow_0(global_state)
@@ -1118,11 +1120,46 @@ function init_bigface(state)
      end
   }
 
-  local foreground = {
+  add_obj(state, 28, 110, 80, {"help", "i can't wake up"})
+  add_obj(state, 28, 20, 30, {"it can see me"})
+
+  local textdraw = {
     t = 0,
     x = 0,
-    y = 129,
+    y = -1,
+    px = 0,
+    py = 0,
+    col = 7,
+    tt = 40,
+    update = function(o,s)
+      o.t += 1
+    end,
     draw = function(o,s)
+      -- o.tt == 0.5 => 2 draws / frame
+      -- o.tt == 2 => 0.5 draws / frame
+      local count = 0
+      while o.t > o.tt do
+        print("snoring", o.px, o.py, o.col)
+        o.py += 6
+        o.t -= o.tt
+        o.tt = max(0.5, o.tt / 1.05)
+        if o.py >= 128 then
+          dump_noise(0.1)
+          o.py = 0
+          o.px += 12
+          if o.px >= 128 then
+            dump_noise(0.2)
+            o.px -= 128
+            --o.col += 1
+            if o.col == 7 then
+              o.col = 8
+            else 
+              o.col = 0
+              o.y = 200
+            end
+          end
+        end
+      end
       --for y=0,128 do
       --  for x=0,128 do
       --    if rnd() < 0.005 then
@@ -1135,8 +1172,8 @@ function init_bigface(state)
 
   add(state.objects, facedraw)
   add(state.drawables, facedraw)
-  add(state.objects, foreground)
-  add(state.drawables, foreground)
+  add(state.objects, textdraw)
+  add(state.drawables, textdraw)
 end
 
 function stop_sfx()
@@ -1218,8 +1255,9 @@ function init_rainbow_4(s)
   init_rainbow(s, {make_next=make_init_fn(init_digital),
   diagfun=function(x,y,t)
     --local sinsin = sin(t * 0.03125 / 2)
-    local sinsin = sin(t * 0.01125 / 2)
-    return (x+y)*(1+sqr(sinsin)) / 20
+    --local sinsin = sqr(sin(t * 0.01125 / 2)) * cos(t * 0.001)
+    local tt = t * 0.0008
+    return (sqrt(sqr(64-x) + sqr(64-y))/50) * sin(tt)/cos(tt) --(64 - x*x / 100)*(1+sinsin) / 20
   end})
 end
 
