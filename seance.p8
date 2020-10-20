@@ -53,6 +53,7 @@ function _init()
   cls(0)
 
   global_state = init_dead()
+  --init_rainbow_3(global_state)
   init_bedroom(global_state)
   --init_rainbow_4(global_state)
   --init_digital(global_state)
@@ -937,6 +938,8 @@ end
 
 function init_digital(state)
   cls(0)
+  music(-1)
+  stop_sfx()
   state.goto_next = {
     test = function(state)
       return state.player.y < 3
@@ -1198,6 +1201,20 @@ function init_rainbow_3(s)
       return 10 * sin(x / 50 - y / 50) * sinsin
     end
   end})
+  add(s.objects, {
+    x = 0,
+    y = 0,
+    t = 0,
+    update = function(o, s)
+      if (stat(24) == -1) then
+        o.t = 1
+        local spd = 26-2*o.t
+        set_speed(6, spd)
+        set_speed(7, spd)
+        music(1)
+      end
+    end
+  })
 end
 
 function init_rainbow_4(s)
@@ -1220,7 +1237,20 @@ function init_rainbow_4(s)
     end
     o.xflip = ((state.t / k) % 2 < 1)
   end)
-
+  add(s.objects, {
+    x = 0,
+    y = 0,
+    t = 0,
+    update = function(o, s)
+      if (stat(24) == -1) then
+        o.t = 3
+        local spd = 26-2*o.t
+        set_speed(6, spd)
+        set_speed(7, spd)
+        music(1)
+      end
+    end
+  })
 end
 
 function init_rainbow(state, config)
