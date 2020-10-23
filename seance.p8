@@ -2,46 +2,6 @@ pico-8 cartridge // http://www.pico-8.com
 version 29
 __lua__
 
--- ideas
---
--- puzzle where there are regions on the ground constantly drawn over
--- so use trail like pastel rubbing 
---
--- seancer trying to swindle daughter out of money
--- who is trying to find where money buried
--- but SPECIFICALLY do you find the room enriching?
---
--- badly thrown pot
--- the viper character
--- snoring snoring two in the morning
--- my taste doesnt align with my talent
---
--- crime never pays
---
--- Go to sleep
--- walk to hub
--- each hub character says different things
--- gradually infected?
--- go to thing
--- get woken up
---
--- float like a jellyfish, sting like a jellyfish
--- only come out at night like a gay vampire
--- "Even if he would like to go into a dream, an error takes place. Even if he would like to go into a dream, an error takes place." 
-
--- snoring snoring
---
--- 
--- disco elysium style inner voices talking to you
--- 
--- blah blah blah economics blah blah
--- blah blah blah game design blah blah
--- blah blah player agency blah blah
-
--- what they have the ability to do is beam it out from your third eye
--- as a hologram into the real world and then it gradually materialses out into a solid object
--- its like 3d printing with your imagination
-
 text_speed = 0.35
 text_speed_internal = text_speed * 1.5
 global_state = nil
@@ -53,36 +13,7 @@ function _init()
   cls(0)
 
   global_state = init_dead()
-  --init_rainbow_3(global_state)
   init_bedroom(global_state)
-  --init_rainbow_4(global_state)
-  --init_digital(global_state)
-
-  --init_bigface(global_state)
-  --global_state = bigface_trans(global_state)
-
-  --init_bigface(global_state)
-  --init_house_walk(global_state)
-  --init_digital(global_state)
-  --init_rainbow_0(global_state)
-  --init_bigface(global_state)
-  --init_sea_0(global_state)
-  --init_sea_0(global_state)
-  --init_rainbow_0(global_state)
-  --init_crossroads(global_state)
-  --global_state = make_perlin_sample_trans(global_state)
-  --init_sea(global_state)
-  --init_noise(global_state)
-
-  --global_state = init_talking()
-
-  --init_house(global_state)
-
-  --global_state = init_dead()
-  --init_crossroads(global_state)
-
-  --global_state = init_intro()
-  --global_state = init_talking()
 end
 
 function _update60()
@@ -118,10 +49,6 @@ function init_dead()
     min_x = -5,
     max_x = 128+5,
 
-    filter_scene = true,
-    filter_pat = 0,
-    noise_mag = 0,
-
     text = nil,
     interupt_text = nil,
     interupt_text_t = 0,
@@ -147,9 +74,6 @@ function init_dead()
   }
 
   add(state.drawables, state.player)
-
-  --init_rose_garden(state)
-  --init_house(state)
 
   return state
 end
@@ -216,8 +140,6 @@ function add_static_prop(state, sprite, x, y)
 end
 
 function init_bedroom(state)
-  add(state.dialogue, ".")
-  add(state.dialogue, ".")
 
   state.player.x = 40
   state.player.y = 70
@@ -323,8 +245,6 @@ function init_bedroom(state)
       }
       if col(window_col, player_col) then
 
-        --local col1 = 9
-        --local col2 = 13
         local col1 = 1
         local col2 = 2
 
@@ -419,8 +339,6 @@ function init_bedroom(state)
 end
 
 function init_bedroom_asleep(state)
-  add(state.dialogue, ".")
-  add(state.dialogue, ".")
 
   state.min_y = 10
   state.max_y = 118
@@ -445,7 +363,6 @@ function init_bedroom_asleep(state)
       init_house(s)
       local noisy_s = make_noise_transition(s)
       return noisy_s
-      --return make_text_transition(noisy_s, "the cold breeze hits you#as you step out into the moonlight")
     end,
   }
 end
@@ -459,12 +376,10 @@ function add_tree(state, x, y, h, flip)
     draw = function(o, state)
       palt(11, true)
       palt(0, false)
-      -- draw so door is at (house_x, house_y)
       for i = 0,h do
         local xoff = i*sin((o.t0 + state.t) / o.k)
         sspr(15*8, 8+(h-i)*8, 8, 8, o.x + xoff, o.y - 8*i, 8, 8, flip)
       end
-      --sspr(15*8, 8, 8, 8*h, o.x, o.y - 8*h, 8, 8*h, flip)
       palt()
     end,
   }
@@ -472,8 +387,6 @@ function add_tree(state, x, y, h, flip)
 end
 
 function init_house(state)
-  add(state.dialogue, ".")
-  add(state.dialogue, ".")
 
   music(2, 8000)
 
@@ -532,12 +445,9 @@ function init_house(state)
       return make_noise_transition(s)
     end,
   }
-  --add_sign(10, 50, {"saint waningus\'", "garden of smells"})
 end
 
 function init_house_walk(state)
-  add(state.dialogue, ".")
-  add(state.dialogue, ".")
 
   state.player.y = 0
 
@@ -575,16 +485,11 @@ function init_house_walk(state)
       local s = init_dead()
       init_mountain(s)
       return make_noise_transition(s)
-      --return make_noise_transition(s, 7)
     end,
   }
-
-  --add_sign(10, 50, {"saint waningus\'", "garden of smells"})
 end
 
 function init_mountain(state)
-  add(state.dialogue, ".")
-  add(state.dialogue, ".")
 
   state.player.x = 0
   state.player.y = 80
@@ -602,7 +507,6 @@ function init_mountain(state)
       -- transition
       local s = init_dead()
       init_sea_0(s)
-      --init_crossroads(s)
       return make_noise_transition(s)
     end,
   }
@@ -616,13 +520,11 @@ function init_mountain(state)
     local w = {
       x = 130,
       y = rnd(128),
-      --col = 1 + flr(rnd(2)),
       col = col,
       draw = function(o, s)
         o.x -= 10
         if (o.x < -10) then
           del(s.drawables, o)
-          --o.x = 64
         end
 
         rectfill(o.x, o.y, o.x + 40, o.y + 1, o.col)
@@ -662,7 +564,6 @@ function init_mountain(state)
         xvel -= 0.19
       end
       state.player.x -= xvel
-      --state.player.x -= 0.195
     end
   end
 
@@ -731,7 +632,6 @@ function init_mountain(state)
   add(state.objects, state.alpaca)
   add(state.drawables, state.alpaca)
 
-  --add_sign(10, 50, {"saint waningus\'", "garden of smells"})
 end
 local add_obj = function(state, sprite, x, y, text, update)
   local s = {
@@ -838,24 +738,8 @@ function sample_perlin(perlin, x, y, t)
   local dl = (x-(gx)*grid_w) * cos(g_dl) + (y-(gy+1)*grid_h)*sin(g_dl)
   local dr = (x-(gx+1)*grid_w) * cos(g_dr) + (y-(gy+1)*grid_h)*sin(g_dr)
 
-  --if false then
-  --  return 2 * ur / grid_w
-  --end
-
-  --if false then
-  --  if y < 64 then
-  --    return 2 * dr / grid_w
-  --  else
-  --    return 2 * ur / grid_w
-  --  end
-  --end
-
   local norm_xo = (x-gx*grid_w) / grid_w
   local norm_yo = (y - gy*grid_h) / grid_h
-
-  --if false then
-  --  return norm_yo
-  --end
 
   local fn = avgsmoothstep
   local interp_up = fn(ul, ur, norm_xo)
@@ -901,15 +785,6 @@ function init_noise(state)
   state.disable_cls = true
   state.text_from_objs = true
   state.text = { "chapter 13" }
-  -- "can we skip this one"
-  -- jokerama 6
-
-  -- bad comedian
-  -- console players be like
-      -- take control of player stomp about
-
-  add(state.dialogue, ".")
-  add(state.dialogue, ".")
 
   local perlin = make_perlin(4, 4)
 
@@ -969,19 +844,15 @@ function init_digital(state)
   state.player.x = 58
   state.player.y = 118
   add_obj(state, 28, 50, 60, {"what is a coralrrafk?", "wait it costs HOW much?"}, function(o, state)
-    --o.s = 28 + flr((state.t / 2) % 2)
     local k = 32
     if (state.t / k) % 1 < 0.5 then
       o.text[2] = "wait it costs HOW much?"
-      --o.s = 29
     else
       o.text[2] = "wait it costs how much?"
       o.s = 28
     end
     o.xflip = ((state.t / k) % 2 < 1)
   end)
-  add(state.dialogue, ".")
-  add(state.dialogue, ".")
   add(state.drawables, {
     y = 0,
     draw = function(o, s)
@@ -1039,9 +910,6 @@ function init_bigface(state)
   stop_sfx()
   state.player.y = 110
 
-  add(state.dialogue, "snoring")
-  add(state.dialogue, "snoring")
-
   local facedraw = {
      x = 0,
      y = 0,
@@ -1097,8 +965,6 @@ function init_bigface(state)
       o.t += 1
     end,
     draw = function(o,s)
-      -- o.tt == 0.5 => 2 draws / frame
-      -- o.tt == 2 => 0.5 draws / frame
       local count = 0
       if o.t > o.tt then
         sfx(o.sfx)
@@ -1127,13 +993,6 @@ function init_bigface(state)
           end
         end
       end
-      --for y=0,128 do
-      --  for x=0,128 do
-      --    if rnd() < 0.005 then
-      --      rectfill(x, y, x+1, y+1, 1)
-      --    end
-      --  end
-      --end
     end
   }
 
@@ -1235,15 +1094,12 @@ end
 function init_rainbow_4(s)
   init_rainbow(s, {make_next=make_init_fn(init_digital),
     diagfun=function(x,y,t)
-      --local sinsin = sin(t * 0.03125 / 2)
-      --local sinsin = sqr(sin(t * 0.01125 / 2)) * cos(t * 0.001)
       local tt = t * 0.0008
       return (sqrt(sqr(64-x) + sqr(64-y))/50) * sin(tt)/cos(tt) --(64 - x*x / 100)*(1+sinsin) / 20
     end
   })
 
   add_obj(s, 60, 65, 55, {"i dream of crime, piping hot"}, function(o, state)
-    --o.s = 28 + flr((state.t / 2) % 2)
     local k = 256
     if (state.t + 200 / k) % 1 < 0.02 then
       --o.s = 29
@@ -1270,7 +1126,6 @@ end
 
 function init_rainbow(state, config)
   cls(0)
-  --music(0)
 
   if config.initfn != nil then
     config.initfn(state)
@@ -1278,13 +1133,10 @@ function init_rainbow(state, config)
 
   state.disable_cls = true
 
-  add(state.dialogue, ".")
-  add(state.dialogue, ".")
   state.player.y = 110
   state.player.x = 16
 
   local perlin = make_perlin(5, 5)
-  --local precomp = precomp_perlin(perlin)
   local precomp = {w=128,h=128,points={},i=0,max=128*128}
 
   state.goto_next = {
@@ -1312,24 +1164,6 @@ function init_rainbow(state, config)
       local scale = 2 --+ o.t / 1000
       local prob = 0.95 -- o.t / 1000
       local k = 128/scale
-
-      local consts = 122.5 / (16 * 4 * 2)
-
-      local diagfunstrobe = function(x, y, t)
-        local sinsin = sin(t * 0.03125 / 2)
-        if (sinsin > 0) then
-          return 10 * sin(x / 50 + y / 50) * sinsin
-        else
-          return 10 * sin(x / 50 - y / 50) * sinsin
-        end
-      end
-
-      local diagfunfov = function(x, y, t)
-        --return 0.36 * (x / 8 + y / 4) --* sqr(sin(t / 10000))
-        return -0.36 * ((64 - x)  + (y) / 2) / 4 + 10
-        --return 3* sin(y / 50)
-        --return sqr(x/8 + y / 4) / 80
-      end
 
       local diagfun = config.diagfun
 
@@ -1388,38 +1222,10 @@ end
 
 function init_sea(state, config)
   sfx(27)
-  --local p = make_perlin(5, 5)
-  --local p2 = make_perlin(5, 5)
   local wave1 = {w=128,h=128,points={},i=0,max=128*128} --precomp_perlin(p)
   local wave2 = {w=128,h=128,points={},i=0,max=128*128} --precomp_perlin(p2)
   return init_sea_perlin(state, wave1, wave2, config)
 end
-
---function make_perlin_sample_trans(target_state)
---  local p = make_perlin(5, 5)
---  --local p2 = make_perlin(5, 5)
---  return {
---    p = p,
---    i = 0,
---    max = 128*128,
---    precomp = {
---      w = 128,
---      h = 128,
---      points = {}
---    },
---    updatefn = function(s)
---      local inc = 128 * 4
---      precomp_perlin_partial(s.p, s.precomp, s.i, inc)
---      s.i += inc
---      if s.i >= s.max then
---        return target_state
---      end
---    end,
---    drawfn = function(s)
---      rectfill(10, 90, (s.i / s.max)*118 + 10, 95, 7)
---    end,
---  }
---end
 
 function init_sea_perlin(state, wave1_precomp, wave2_precomp, config)
   cls(0)
@@ -1459,9 +1265,6 @@ function init_sea_perlin(state, wave1_precomp, wave2_precomp, config)
   }
 
   state.disable_cls = true
-
-  add(state.dialogue, ".")
-  add(state.dialogue, ".")
 
   state.player.x = 5
   state.player.spr_look_right = true
@@ -1530,8 +1333,6 @@ function init_sea_perlin(state, wave1_precomp, wave2_precomp, config)
     x = 0,
     y = 30,
     t = 0,
-    --perlin = perlin,
-    --precomp = precomp_perlin(perlin),
     fadein_t_start = 32,
     fadein_t = 32,
     waves = waves,
@@ -1577,8 +1378,6 @@ function init_sea_perlin(state, wave1_precomp, wave2_precomp, config)
             end
           end
         end
-        --state.player.xvel = state.player.xvel / 1.85
-        --state.player.yvel = state.player.yvel / 1.85
         return
       end
 
@@ -1621,28 +1420,6 @@ function init_sea_perlin(state, wave1_precomp, wave2_precomp, config)
       local froth = 7
       local sea = 2
 
-      local consts = 122.5 / (16 * 4 * 2)
-
-      local diagfunstrobe = function(x, y, t)
-        local sinsin = sin(t * 0.03125 / 2)
-        if (sinsin > 0) then
-          return 10 * sin(x / 50 + y / 50) * sinsin
-        else
-          return 10 * sin(x / 50 - y / 50) * sinsin
-        end
-      end
-
-      local diagfunfov = function(x, y, t)
-        return 0.36 * (x / 8 + y / 4) --* sqr(sin(t / 10000))
-        --return 3* sin(y / 50)
-        --return sqr(x/8 + y / 4) / 80
-      end
-
-      local diagfun = diagfunfov
-
-      local diagplayer = diagfun(state.player.x, state.player.y, o.t)
-      local player_height = sample_precomp_perlin(o.waves[1].precomp, flr(state.player.x), flr(state.player.y), o.t) + diagplayer
-
       for x=0,k do
         for y=0,k do
           if rnd() > prob and x*scale < 128 and y*scale < 128 then -- (32*flr(scale*x / 16) != 64) then
@@ -1653,8 +1430,6 @@ function init_sea_perlin(state, wave1_precomp, wave2_precomp, config)
               local height1 = 3 + 1*(sampled1 + rnd(0.5))
               local height2 = 3 + 1*(sampled2 + rnd(0.5))
               local diag_c = 25
-              --local diag1 = (x - 64) / 8 + (y - 64) / 4 + diag_c
-              --local diag2 = 0.7 * (x - 64) / 8 + 1.3 *(y - 64) / 4 + diag_c + 2
               local diag1 = diag_consts.x1 * (x-64) + diag_consts.y1 * (y-64) + diag_consts.c1
               local diag2 = diag_consts.x2 * (x-64) + diag_consts.y2 * (y-64) + diag_consts.c2
 
@@ -1913,13 +1688,6 @@ function update_dead(state)
     if d2 < 60 then
       dialogue_t = state.dialogue_t + 1
       text = o.text
-      if state.dialogue_t == 0 then
-        if o.funny then
-          state.smelled_funny += 1
-        else
-          state.smelled_serious += 1
-        end
-      end
     end
   end
 
@@ -1938,52 +1706,7 @@ function update_dead(state)
     state.text = text
   end
 
-  state.filter_scene = true
-  state.filter_pat = 0b0000000000000000.1
-
   local speed = 0
-
-  if state.smelled_serious < 1 or state.smelled_funny < 1 then
-  else
-    speed = sqr((state.dialogue_state) * 0.15)
-
-    if state.smelled_serious >= 4
-      and state.smelled_funny >= 4
-      and state.dialogue_state <= #state.dialogue then
-
-      --if state.interupt_text_t == 0 and (state.dialogue_state + 1) % 2 == 0 then
-      --end
-      
-      if state.interupt_text_t == 0 and state.dialogue_state == 1 then
-        music(-1)
-      end
-
-      if (stat(24) == -1) then
-        local spd = 26-2*state.dialogue_state
-        set_speed(6, spd)
-        set_speed(7, spd)
-        music(1)
-      end
-
-      state.interupt_text_t += 1
-      state.interupt_text = state.dialogue[state.dialogue_state]
-      if state.interupt_text_t * text_speed * 0.25 * sqrt(state.dialogue_state) > #state.interupt_text then
-        state.interupt_text_t = 0
-        state.dialogue_state += 1
-      end
-    end
-  end
-
-  local is_end = 
-    (state.dialogue_state == #state.dialogue - 1 and abs(state.phase_text_y - dialogue_y) < 1)
-    or state.dialogue_state >= #state.dialogue
-  if is_end then
-    return init_talking()
-
-    --state.phase_text_y = dialogue_y
-    --speed = 0
-  end
-
   state.phase_text_y = (state.phase_text_y + 2 * speed) % 128
   state.face_scale = 0
   state.phase_col += 0.4 * speed
