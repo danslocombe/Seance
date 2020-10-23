@@ -299,6 +299,13 @@ function init_bedroom(state)
     h = 4,
   }
 
+  local bed_col_hide = {
+    x = bed.x-6*2,
+    y = bed.y-4*8,
+    w = 12*2,
+    h = 8*8,
+  }
+
   state.disable_cls = true
   state.hide_props = false
 
@@ -348,6 +355,12 @@ function init_bedroom(state)
         rectfill(0, 0, 128, 128, 0)
         fillp()
 
+        if col(bed_col_hide, player_col) then
+          state.hide_props = true
+        else
+          state.hide_props = false
+        end
+
         if col(bed_col, player_col) then
           o.nearbed_t += 1
           sfx(22)
@@ -356,7 +369,7 @@ function init_bedroom(state)
         end
 
         if (o.nearbed_t > 24) then
-          state.hide_props = true
+          --state.hide_props = true
           local k = 0.0005
           local c = k * (o.nearbed_t - 24)^1.5
           local xx = c * state.player.x
@@ -372,14 +385,16 @@ function init_bedroom(state)
           rectfill(128 - xx_inv, 0, 128, 128, col)
           -- d
           rectfill(0, 128-yy_inv, 128, 128, col)
+        else
+          -- back wall
+          rectfill(32, 48, 128-32, 58, 2)
+        end
 
+        if state.hide_props then
           palt(11, true)
           spr(76, bed.x-9, bed.y-7)
           spr(77, bed.x-1, bed.y-7)
           palt()
-        else
-          -- back wall
-          rectfill(32, 48, 128-32, 58, 2)
         end
       end
       --cls(0)
