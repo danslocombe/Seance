@@ -2,18 +2,24 @@ pico-8 cartridge // http://www.pico-8.com
 version 29
 __lua__
 
+-- seance
+-- dan slocombe
+-- 2020
+
 text_speed = 0.35
 text_speed_internal = text_speed * 1.5
 global_state = nil
 dialogue_y = 6
+enable_debug = false
 
 action_pressed_last_frame = false
 
 function _init()
   cls(0)
 
-  global_state = init_dead()
+  global_state = init_seance()
   init_bedroom(global_state)
+  --init_sea_0(global_state)
 end
 
 function _update60()
@@ -35,14 +41,14 @@ end
 
 ------
 
-function init_dead()
+function init_seance()
   local state = {
     t = 0,
     s = 0,
     global_t = 0,
     state_init = true,
-    updatefn = update_dead,
-    drawfn = draw_dead,
+    updatefn = update_seance,
+    drawfn = draw_seance,
 
     min_y = -5,
     max_y = 128+5,
@@ -67,9 +73,6 @@ function init_dead()
 
     player = make_player(64, 22),
 
-    smelled_serious = 0,
-    smelled_funny = 0,
-
     goto_next = nil,
   }
 
@@ -87,7 +90,7 @@ add_bird = function(state, x, y, xvel, yvel, flip)
     update = function(o, state)
       if o.nesting then
         local d2 = sqr(o.x - state.player.x) + sqr(o.y - state.player.y)
-        if d2 < 80 then
+        if d2 < 120 then
           o.nesting = false
           sfx(8)
         end
@@ -327,7 +330,7 @@ function init_bedroom(state)
     end,
     init = function()
       -- transition
-      local s = init_dead()
+      local s = init_seance()
       init_bedroom_asleep(s)
       s.player.x = state.player.x
       s.player.y = state.player.y
@@ -359,7 +362,7 @@ function init_bedroom_asleep(state)
       return dist2 < 12
     end,
     init = function()
-      local s = init_dead()
+      local s = init_seance()
       init_house(s)
       local noisy_s = make_noise_transition(s)
       return noisy_s
@@ -440,7 +443,7 @@ function init_house(state)
     end,
     init = function()
       -- transition
-      local s = init_dead()
+      local s = init_seance()
       init_house_walk(s)
       return make_noise_transition(s)
     end,
@@ -482,7 +485,7 @@ function init_house_walk(state)
     end,
     init = function()
       -- transition
-      local s = init_dead()
+      local s = init_seance()
       init_mountain(s)
       return make_noise_transition(s)
     end,
@@ -505,7 +508,7 @@ function init_mountain(state)
     end,
     init = function()
       -- transition
-      local s = init_dead()
+      local s = init_seance()
       init_sea_0(s)
       return make_noise_transition(s)
     end,
@@ -633,7 +636,7 @@ function init_mountain(state)
   add(state.drawables, state.alpaca)
 
 end
-local add_obj = function(state, sprite, x, y, text, update)
+local add_obj = function(state, sprite, x, y, text, update, nocol)
   local s = {
     s = sprite,
     x = x,
@@ -649,16 +652,19 @@ local add_obj = function(state, sprite, x, y, text, update)
     update = update,
   }
 
-  local scol = {
-    x = x-2,
-    y = y-2,
-    w = 4,
-    h = 4,
-  }
-
   add(state.objects, s)
   add(state.drawables, s)
-  add(state.cols, scol)
+
+  if nocol == nil then
+    local scol = {
+      x = x-2,
+      y = y-2,
+      w = 4,
+      h = 4,
+    }
+
+    add(state.cols, scol)
+  end
 end
 
 perlin_scale_k = 4   
@@ -670,36 +676,36 @@ function make_perlin(w, h)
     grads = {},
     get = function(o, x, y)
       if x > o.w then
-        printh("wtf x: " .. x)
+        --printh("wtf x: " .. x)
         x = 0
       end
       if y > o.h then
-        printh("wtf y: " .. y)
+        --printh("wtf y: " .. y)
         y = 0
       end
       return o.grads[1 + (y) * (o.w + 1) + (x)]
     end
   }
-  printh("Gradients:")
+  --printh("Gradients:")
   for yy=0,h do
     for xx=0,w do
       local grad = rnd()
-      printh(" x: " .. xx .. " y: " .. yy .. " grad: " .. grad * 360)
+      --printh(" x: " .. xx .. " y: " .. yy .. " grad: " .. grad * 360)
       add(perlin.grads, grad)
     end
   end
 
-    printh("a")
-    printh(#perlin.grads)
+    --printh("a")
+    --printh(#perlin.grads)
   for ii=1,#perlin.grads do
     printh(perlin.grads[ii]*360)
   end
 
-    printh("Other")
+    --printh("Other")
   for yy=0,h do
     for xx=0,w do
       local grad = perlin.get(perlin, xx, yy)
-      printh(" x: " .. xx .. " y: " .. yy .. " grad: " .. grad * 360)
+      --printh(" x: " .. xx .. " y: " .. yy .. " grad: " .. grad * 360)
     end
   end
 
@@ -835,7 +841,7 @@ function init_digital(state)
       return state.player.y < 3
     end,
     init = function()
-      local s = init_dead()
+      local s = init_seance()
       init_bigface(s)
       return bigface_trans(s)
     end
@@ -1023,7 +1029,7 @@ end
 
 function make_init_fn(initfn)
   return function()
-    local s = init_dead()
+    local s = init_seance()
     initfn(s)
     return s
   end
@@ -1213,11 +1219,18 @@ function init_sea_0(s0)
     y2 = 1.3/4,
     c2 = 24,
   }
-  init_sea(s0, {diag=diag_consts2, add_duck=true, make_next = function()
-    local s = init_dead()
+  init_sea(s0, {diag=diag_consts2, make_next = function()
+    local s = init_seance()
     init_sea(s, {diag=diag_consts, add_cave=true})
     return s
   end})
+
+  add_obj(s0, 38, 60, 64, {"quack"}, function(o,s)
+    o.x = 60+5*s.waves[1].p
+    o.y = 100 - 10*sqr(max(s.waves[1].p,s.waves[2].p))
+  end,
+  -- nocol = 
+    true) 
 end
 
 function init_sea(state, config)
@@ -1236,7 +1249,7 @@ function init_sea_perlin(state, wave1_precomp, wave2_precomp, config)
   local make_next = config.make_next
   if make_next == nil then
     make_next = function()
-      local s = init_dead()
+      local s = init_seance()
       init_rainbow_0(s)
       return make_noise_transition(s)
     end
@@ -1244,13 +1257,6 @@ function init_sea_perlin(state, wave1_precomp, wave2_precomp, config)
 
   local cave_x = 115-20
   local cave_y = 15
-
-  if config.add_duck then
-    add_obj(state, 38, 60, 64, {"quack"}, function(o,s)
-      o.x = 60+5*state.waves[1].p
-      o.y = 100 - 10*sqr(max(state.waves[1].p,state.waves[2].p))
-    end) 
-  end
 
   state.goto_next = {
     test = function(state)
@@ -1281,6 +1287,7 @@ function init_sea_perlin(state, wave1_precomp, wave2_precomp, config)
       state = 1,
       forward_vel = 0.009, --+ 0.002 * i,
       back_vel = 0.005 * 0.7, --+ 0.0004 * i,
+      precomputing = true,
       vel = 0,
       perlin = make_perlin(5, 5),
       precomp = nil,
@@ -1313,6 +1320,21 @@ function init_sea_perlin(state, wave1_precomp, wave2_precomp, config)
         if o.precomp.i < o.precomp.max then
           precomp_perlin_partial(o.perlin, o.precomp, o.precomp.i, inc)
           o.precomp.i += inc
+        else
+          if o.precomputing then
+            --o.p = -1
+            o.precomputing = false
+
+            if i == 0 then
+              o.p = 0
+              o.vel = o.forward_vel
+              o.state = 1
+            else
+              o.p = 0
+              o.vel = o.back_vel
+              o.state = -1
+            end
+          end
         end
       end
     }
@@ -1365,7 +1387,7 @@ function init_sea_perlin(state, wave1_precomp, wave2_precomp, config)
       local prob = 0.95 -- o.t / 1000
       local k = 128/scale
 
-      if (o.waves[1].precomp.i < o.waves[1].precomp.max) then
+      if (o.waves[1].precomputing) then
         if rnd() < 0.12 then
           dump_noise(0.1)
         end
@@ -1423,84 +1445,81 @@ function init_sea_perlin(state, wave1_precomp, wave2_precomp, config)
       for x=0,k do
         for y=0,k do
           if rnd() > prob and x*scale < 128 and y*scale < 128 then -- (32*flr(scale*x / 16) != 64) then
-            if true then
-              --local sampled = sample_perlin(o.perlin, x*scale, y*scale, o.t)
-              local sampled1 = sample_precomp_perlin(o.waves[1].precomp, x*scale, y*scale, o.t)
-              local sampled2 = sample_precomp_perlin(o.waves[2].precomp, x*scale, y*scale, o.t)
-              local height1 = 3 + 1*(sampled1 + rnd(0.5))
-              local height2 = 3 + 1*(sampled2 + rnd(0.5))
-              local diag_c = 25
-              local diag1 = diag_consts.x1 * (x-64) + diag_consts.y1 * (y-64) + diag_consts.c1
-              local diag2 = diag_consts.x2 * (x-64) + diag_consts.y2 * (y-64) + diag_consts.c2
+            local sampled1 = sample_precomp_perlin(o.waves[1].precomp, x*scale, y*scale, o.t)
+            local sampled2 = sample_precomp_perlin(o.waves[2].precomp, x*scale, y*scale, o.t)
+            local height1 = 3 + 1*(sampled1 + rnd(0.5))
+            local height2 = 3 + 1*(sampled2 + rnd(0.5))
+            local diag_c = 25
+            local diag1 = diag_consts.x1 * (x-64) + diag_consts.y1 * (y-64) + diag_consts.c1
+            local diag2 = diag_consts.x2 * (x-64) + diag_consts.y2 * (y-64) + diag_consts.c2
 
-              local height_min = 0
-              local diag_min = 0
-              if (min_wave_id == 1) then
-                height_min = height1
-                diag_min = diag1
-              else
-                height_min = height2
-                diag_min = diag2
-              end
+            local height_min = 0
+            local diag_min = 0
+            if (min_wave_id == 1) then
+              height_min = height1
+              diag_min = diag1
+            else
+              height_min = height2
+              diag_min = diag2
+            end
 
-              local col = sand
+            local col = sand
 
-              local cc = 1.2
+            local cc = 1.2
 
-              if (height1 + diag1) > wave_1 or (height2 + diag2) > wave_2 then
-                col = sea
-              end
+            if (height1 + diag1) > wave_1 or (height2 + diag2) > wave_2 then
+              col = sea
+            end
 
-              local w = o.waves[1]
-              local wave1_dd = height1 + diag1 - wave_1
-              if w.vel > 0 and wave1_dd < -((- w.p) - cc) and wave1_dd > 0 then
+            local w = o.waves[1]
+            local wave1_dd = height1 + diag1 - wave_1
+            if w.vel > 0 and wave1_dd < -((- w.p) - cc) and wave1_dd > 0 then
+              col = froth
+            end
+
+            w = o.waves[2]
+            local wave2_dd = height2 + diag2 - wave_2
+            if w.vel > 0 and wave2_dd < -((- w.p) - cc) and wave2_dd > 0 then
+              col = froth
+            end
+            
+            local waveback_1_dd = height1 + diag1 - min_wave
+            if col == sea and o.waves[1].vel < 0 and waveback_1_dd < -(-o.waves[1].p - cc * 0.8) and waveback_1_dd > 0 then
+              col = sand_wet
+              --col = 13
+              if rnd() < 0.9 then
                 col = froth
               end
+              if rnd() < 0.05 then
+                --col = sand_wet
+              end
+            end
 
-              w = o.waves[2]
-              local wave2_dd = height2 + diag2 - wave_2
-              if w.vel > 0 and wave2_dd < -((- w.p) - cc) and wave2_dd > 0 then
+            local waveback_2_dd = height2 + diag2 - min_wave
+            if col == sea and o.waves[2].vel < 0 and waveback_2_dd < -(-o.waves[2].p - cc * 0.8) and waveback_2_dd > 0 then
+              col = sand_wet
+              --col = 13
+              if rnd() < 0.9 then
                 col = froth
               end
-              
-              local waveback_1_dd = height1 + diag1 - min_wave
-              if col == sea and o.waves[1].vel < 0 and waveback_1_dd < -(-o.waves[1].p - cc * 0.8) and waveback_1_dd > 0 then
-                col = sand_wet
-                --col = 13
-                if rnd() < 0.9 then
-                  col = froth
-                end
-                if rnd() < 0.05 then
-                  --col = sand_wet
-                end
+              if rnd() < 0.05 then
+                --col = sand_wet
               end
+            end
 
-              local waveback_2_dd = height2 + diag2 - min_wave
-              if col == sea and o.waves[2].vel < 0 and waveback_2_dd < -(-o.waves[2].p - cc * 0.8) and waveback_2_dd > 0 then
-                col = sand_wet
-                --col = 13
-                if rnd() < 0.9 then
-                  col = froth
-                end
-                if rnd() < 0.05 then
-                  --col = sand_wet
-                end
+            if state.debug then
+              if abs(wave1_dd) < 0.125 then
+                col = 8
               end
+              if abs(wave2_dd) < 0.125 then
+                col = 11
+              end
+            end
 
-              if state.debug then
-                if abs(wave1_dd) < 0.125 then
-                  col = 8
-                end
-                if abs(wave2_dd) < 0.125 then
-                  col = 11
-                end
-              end
-
-              if (col == sand and rnd() < 0.75) then
-                -- chance to just continue to leave wet sand
-              else
-                rectfill(x*scale, y *scale, (x+1)*scale, (y+1)*scale, col)
-              end
+            if (col == sand and rnd() < 0.75) then
+              -- chance to just continue to leave wet sand
+            else
+              rectfill(x*scale, y *scale, (x+1)*scale, (y+1)*scale, col)
             end
           end
         end
@@ -1648,7 +1667,7 @@ function make_player(x, y)
       p.y = ty
 
       if has_collided then
-        -- todo uipdate xvel yvel
+        -- uipdate xvel yvel?
       end
 
     end,
@@ -1672,7 +1691,7 @@ function make_player(x, y)
   return player
 end
 
-function update_dead(state)
+function update_seance(state)
   state.t += 1
   state.global_t += 1
   state.player.update(state.player, state)
@@ -1691,7 +1710,7 @@ function update_dead(state)
     end
   end
 
-  if btnp(4) then
+  if btnp(4) and enable_debug then
     state.debug = not state.debug
   end
 
@@ -1721,15 +1740,15 @@ function update_dead(state)
   end
 end
 
-function draw_dead(state)
-  --cls(0)
+function draw_seance(state)
   if (not state.disable_cls) then
-    local pat = generate_fillp(state.t, 32, state.phase_bg_bits, false)
+    local pat = generate_fillp(state.t, 32, state.phase_bg_bits)
     fillp(pat)
     rectfill(0, 0, 128, 128, state.phase_col)
     fillp()
   end
 
+  -- most of the time the order wont update so insertion sort~~o(n)
   insertion_sort(state.drawables, function(list, i) return list[i].y end)
 
   for i,o in pairs(state.drawables) do
@@ -1739,7 +1758,6 @@ function draw_dead(state)
   if state.interupt_text != nil then
     local yy = state.phase_text_y
     rectfill(0, yy, 128, yy + 4, 0)
-    --rectfill(0, yy-1, 128, yy + 5, 0)
     draw_text(state.interupt_text_t * text_speed_internal, state.interupt_text, 4, yy, 6, 5)
   end
 
@@ -1755,9 +1773,7 @@ function draw_dead(state)
     end
     for i,text in pairs(state.text) do
       if type(text) == "string" and state.dialogue_t * text_speed_internal > before then
-        --local yy = state.phase_text_y + i * 6
         local yy = 100 + i * 6
-        --rectfill(0, yy, 128, yy + 4, 0)
         rectfill(0, yy-1, 128, yy + 5, 0)
         draw_text(state.dialogue_t * text_speed_internal - before, text, 4, yy, 7, text_snd)
         before += #text + text_pause
@@ -1837,16 +1853,12 @@ function generate_cycle_fillp(k)
     return pat
 end
 
-function generate_fillp(t, k, bits_selector, just_filter)
+function generate_fillp(t, k, bits_selector)
     local filter = 0
     if (t % k) < k/2 then
       filter = 0b1110110111101111.1
     else
       filter = 0b0111101101111011.1
-    end
-
-    if (just_filter) then
-      return filter
     end
 
     local pat = 0b0000000000000000.1
@@ -1911,10 +1923,6 @@ function insertion_sort(list, f)
   end
 end
 
-function set_speed(sfx, speed)
-  poke(0x3200 + 68*sfx + 65, speed)
-end
-
 function col(obj1, obj2)
   return
     (obj1.x + obj1.w > obj2.x) and
@@ -1936,7 +1944,6 @@ function make_noise_transition(target_state, col)
       s.t+=1
     end,
     drawfn = function(s)
-      --rspr(8,32,42 + 1, 32, 16,32, 2.5, -0.26, 1, 1, 11)
       dump_noise(0.25)
     end,
   }
@@ -1961,6 +1968,9 @@ function make_text_transition(target_state, text)
   return s
 end
 
+-- sfx data manipulation
+-- taken from https://www.lexaloffle.com/bbs/?tid=2341
+
 function make_note(pitch, instr, vol, effect)
   return { pitch + 64*(instr%4) , 16*effect + 2*vol + flr(instr/4) }
   -- flr may be redundant when this is poke'd into memory
@@ -1975,6 +1985,10 @@ function set_note(sfx, time, note)
   local addr = 0x3200 + 68*sfx + 2*time
   poke(addr, note[1])
   poke(addr+1, note[2])
+end
+
+function set_speed(sfx, speed)
+  poke(0x3200 + 68*sfx + 65, speed)
 end
 
 __gfx__
